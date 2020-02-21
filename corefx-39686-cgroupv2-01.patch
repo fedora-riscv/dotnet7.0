@@ -1,0 +1,391 @@
+From 2b2273ea4ea1c28472fa0d6ad2ffeb6374500550 Mon Sep 17 00:00:00 2001
+From: Omair Majid <omajid@redhat.com>
+Date: Wed, 23 Oct 2019 17:45:59 -0400
+Subject: [PATCH 1/2] Add cgroup v2 support to Interop.cgroups
+
+Fix up code to adjust cgroup v1 assumptions and check cgroup v2 paths,
+locations and values.
+
+Continue using the older cgroup v1 terminology for APIs.
+---
+ .../Interop/Linux/cgroups/Interop.cgroups.cs  | 116 ++++++++++++++----
+ src/Common/tests/Common.Tests.csproj          |   4 +
+ .../tests/Tests/Interop/cgroupsTests.cs       | 107 ++++++++++++++++
+ .../tests/DescriptionNameTests.cs             |   2 +-
+ 4 files changed, 206 insertions(+), 23 deletions(-)
+ create mode 100644 src/Common/tests/Tests/Interop/cgroupsTests.cs
+
+diff --git a/src/Common/src/Interop/Linux/cgroups/Interop.cgroups.cs b/src/Common/src/Interop/Linux/cgroups/Interop.cgroups.cs
+index 0ffd4d7b7c03..186fe0516c5b 100644
+--- a/src/Common/src/Interop/Linux/cgroups/Interop.cgroups.cs
++++ b/src/Common/src/Interop/Linux/cgroups/Interop.cgroups.cs
+@@ -9,17 +9,22 @@
+ 
+ internal static partial class Interop
+ {
++    /// <summary>Provides access to some cgroup (v1 and v2) features</summary>
+     internal static partial class cgroups
+     {
++        // For cgroup v1, see https://www.kernel.org/doc/Documentation/cgroup-v1/
++        // For cgroup v2, see https://www.kernel.org/doc/Documentation/cgroup-v2.txt
++
++        /// <summary>The version of cgroup that's being used </summary>
++        internal enum CGroupVersion { None, CGroup1, CGroup2 };
++
+         /// <summary>Path to mountinfo file in procfs for the current process.</summary>
+         private const string ProcMountInfoFilePath = "/proc/self/mountinfo";
+         /// <summary>Path to cgroup directory in procfs for the current process.</summary>
+         private const string ProcCGroupFilePath = "/proc/self/cgroup";
+ 
+-        /// <summary>Path to the found cgroup location, or null if it couldn't be found.</summary>
+-        internal static readonly string s_cgroupMemoryPath = FindCGroupPath("memory");
+-        /// <summary>Path to the found cgroup memory limit_in_bytes path, or null if it couldn't be found.</summary>
+-        private static readonly string s_cgroupMemoryLimitPath = s_cgroupMemoryPath != null ? s_cgroupMemoryPath + "/memory.limit_in_bytes" : null;
++        /// <summary>Path to the found cgroup memory limit path, or null if it couldn't be found.</summary>
++        internal static readonly string s_cgroupMemoryLimitPath = FindCGroupMemoryLimitPath();
+ 
+         /// <summary>Tries to read the memory limit from the cgroup memory location.</summary>
+         /// <param name="limit">The read limit, or 0 if it couldn't be read.</param>
+@@ -42,7 +47,7 @@ public static bool TryGetMemoryLimit(out ulong limit)
+         /// <param name="path">The path to the file to parse.</param>
+         /// <param name="result">The parsed result, or 0 if it couldn't be parsed.</param>
+         /// <returns>true if the value was read successfully; otherwise, false.</returns>
+-        private static bool TryReadMemoryValueFromFile(string path, out ulong result)
++        internal static bool TryReadMemoryValueFromFile(string path, out ulong result)
+         {
+             if (File.Exists(path))
+             {
+@@ -79,6 +84,11 @@ private static bool TryReadMemoryValueFromFile(string path, out ulong result)
+                         result = checked(ulongValue * multiplier);
+                         return true;
+                     }
++
++                    // 'max' is also a possible valid value
++                    //
++                    // Treat this as 'no memory limit' and let the caller
++                    // fallback to reading the real limit via other means
+                 }
+                 catch (Exception e)
+                 {
+@@ -90,12 +100,35 @@ private static bool TryReadMemoryValueFromFile(string path, out ulong result)
+             return false;
+         }
+ 
++        /// <summary>Find the cgroup memory limit path.</summary>
++        /// <returns>The limit path if found; otherwise, null.</returns>
++        private static string FindCGroupMemoryLimitPath()
++        {
++            string cgroupMemoryPath = FindCGroupPath("memory", out CGroupVersion version);
++            if (cgroupMemoryPath != null)
++            {
++                if (version == CGroupVersion.CGroup1)
++                {
++                    return cgroupMemoryPath + "/memory.limit_in_bytes";
++                }
++
++                if (version == CGroupVersion.CGroup2)
++                {
++                    // 'memory.high' is a soft limit; the process may get throttled
++                    // 'memory.max' is where OOM killer kicks in
++                    return cgroupMemoryPath + "/memory.max";
++                }
++            }
++
++            return null;
++        }
++
+         /// <summary>Find the cgroup path for the specified subsystem.</summary>
+         /// <param name="subsystem">The subsystem, e.g. "memory".</param>
+         /// <returns>The cgroup path if found; otherwise, null.</returns>
+-        private static string FindCGroupPath(string subsystem)
++        private static string FindCGroupPath(string subsystem, out CGroupVersion version)
+         {
+-            if (TryFindHierarchyMount(subsystem, out string hierarchyRoot, out string hierarchyMount) &&
++            if (TryFindHierarchyMount(subsystem, out version, out string hierarchyRoot, out string hierarchyMount) &&
+                 TryFindCGroupPathForSubsystem(subsystem, out string cgroupPathRelativeToMount))
+             {
+                 // For a host cgroup, we need to append the relative path.
+@@ -113,19 +146,24 @@ private static string FindCGroupPath(string subsystem)
+         /// <param name="root">The path of the directory in the filesystem which forms the root of this mount; null if not found.</param>
+         /// <param name="path">The path of the mount point relative to the process's root directory; null if not found.</param>
+         /// <returns>true if the mount was found; otherwise, null.</returns>
+-        private static bool TryFindHierarchyMount(string subsystem, out string root, out string path)
++        private static bool TryFindHierarchyMount(string subsystem, out CGroupVersion version, out string root, out string path)
+         {
+-            if (File.Exists(ProcMountInfoFilePath))
++            return TryFindHierarchyMount(ProcMountInfoFilePath, subsystem, out version, out root, out path);
++        }
++
++        internal static bool TryFindHierarchyMount(string mountInfoFilePath, string subsystem, out CGroupVersion version, out string root, out string path)
++        {
++            if (File.Exists(mountInfoFilePath))
+             {
+                 try
+                 {
+-                    using (var reader = new StreamReader(ProcMountInfoFilePath))
++                    using (var reader = new StreamReader(mountInfoFilePath))
+                     {
+                         string line;
+                         while ((line = reader.ReadLine()) != null)
+                         {
+                             // Look for an entry that has cgroup as the "filesystem type"
+-                            // and that has options containing the specified subsystem.
++                            // and, for cgroup1, that has options containing the specified subsystem
+                             // See man page for /proc/[pid]/mountinfo for details, e.g.:
+                             //     (1)(2)(3)   (4)   (5)      (6)      (7)   (8) (9)   (10)         (11)
+                             //     36 35 98:0 /mnt1 /mnt2 rw,noatime master:1 - ext3 /dev/root rw,errors=continue
+@@ -148,17 +186,35 @@ private static bool TryFindHierarchyMount(string subsystem, out string root, out
+                                 continue;
+                             }
+ 
+-                            if (postSeparatorlineParts[0] != "cgroup" ||
+-                                Array.IndexOf(postSeparatorlineParts[2].Split(','), subsystem) < 0)
++                            bool validCGroup1Entry = ((postSeparatorlineParts[0] == "cgroup") &&
++                                    (Array.IndexOf(postSeparatorlineParts[2].Split(','), subsystem) >= 0));
++                            bool validCGroup2Entry = postSeparatorlineParts[0] == "cgroup2";
++
++                            if (!validCGroup1Entry && !validCGroup2Entry)
+                             {
+                                 // Not the relevant entry.
+                                 continue;
+                             }
+ 
+-                            // Found the relevant entry.  Extract the mount root and path.
++                            // Found the relevant entry.  Extract the cgroup version, mount root and path.
++                            switch (postSeparatorlineParts[0])
++                            {
++                                case "cgroup":
++                                    version = CGroupVersion.CGroup1;
++                                    break;
++                                case "cgroup2":
++                                    version = CGroupVersion.CGroup2;
++                                    break;
++                                default:
++                                    version = CGroupVersion.None;
++                                    Debug.Fail($"invalid value for CGroupVersion \"{postSeparatorlineParts[0]}\"");
++                                    break;
++                            }
++
+                             string[] lineParts = line.Substring(0, endOfOptionalFields).Split(' ');
+                             root = lineParts[3];
+                             path = lineParts[4];
++
+                             return true;
+                         }
+                     }
+@@ -169,6 +225,7 @@ private static bool TryFindHierarchyMount(string subsystem, out string root, out
+                 }
+             }
+ 
++            version = CGroupVersion.None;
+             root = null;
+             path = null;
+             return false;
+@@ -180,27 +237,42 @@ private static bool TryFindHierarchyMount(string subsystem, out string root, out
+         /// <returns></returns>
+         private static bool TryFindCGroupPathForSubsystem(string subsystem, out string path)
+         {
+-            if (File.Exists(ProcCGroupFilePath))
++            return TryFindCGroupPathForSubsystem(ProcCGroupFilePath, subsystem, out path);
++        }
++
++        internal static bool TryFindCGroupPathForSubsystem(string procCGroupFilePath, string subsystem, out string path)
++        {
++            if (File.Exists(procCGroupFilePath))
+             {
+                 try
+                 {
+-                    using (var reader = new StreamReader(ProcCGroupFilePath))
++                    using (var reader = new StreamReader(procCGroupFilePath))
+                     {
+                         string line;
+                         while ((line = reader.ReadLine()) != null)
+                         {
+-                            // Find the first entry that has the subsystem listed in its controller
+-                            // list. See man page for cgroups for /proc/[pid]/cgroups format, e.g:
+-                            //     hierarchy-ID:controller-list:cgroup-path
+-                            //     5:cpuacct,cpu,cpuset:/daemons
+-
+                             string[] lineParts = line.Split(':');
++
+                             if (lineParts.Length != 3)
+                             {
+                                 // Malformed line.
+                                 continue;
+                             }
+ 
++                            // cgroup v2: Find the first entry that matches the cgroup v2 hierarchy:
++                            //     0::$PATH
++
++                            if ((lineParts[0] == "0") && (string.Empty == lineParts[1]))
++                            {
++                                path = lineParts[2];
++                                return true;
++                            }
++
++                            // cgroup v1: Find the first entry that has the subsystem listed in its controller
++                            // list. See man page for cgroups for /proc/[pid]/cgroups format, e.g:
++                            //     hierarchy-ID:controller-list:cgroup-path
++                            //     5:cpuacct,cpu,cpuset:/daemons
++
+                             if (Array.IndexOf(lineParts[1].Split(','), subsystem) < 0)
+                             {
+                                 // Not the relevant entry.
+@@ -214,7 +286,7 @@ private static bool TryFindCGroupPathForSubsystem(string subsystem, out string p
+                 }
+                 catch (Exception e)
+                 {
+-                    Debug.Fail($"Failed to read or parse \"{ProcMountInfoFilePath}\": {e}");
++                    Debug.Fail($"Failed to read or parse \"{procCGroupFilePath}\": {e}");
+                 }
+             }
+ 
+diff --git a/src/Common/tests/Common.Tests.csproj b/src/Common/tests/Common.Tests.csproj
+index a189d856348b..979c8dd7fbe6 100644
+--- a/src/Common/tests/Common.Tests.csproj
++++ b/src/Common/tests/Common.Tests.csproj
+@@ -12,6 +12,9 @@
+     <Compile Include="$(CommonTestPath)\System\Security\Cryptography\ByteUtils.cs">
+       <Link>Common\System\Security\Cryptography\ByteUtils.cs</Link>
+     </Compile>
++    <Compile Include="$(CommonPath)\Interop\Linux\cgroups\Interop.cgroups.cs">
++      <Link>Common\Interop\Linux\cgroups\Interop.cgroups.cs</Link>
++    </Compile>
+     <Compile Include="$(CommonPath)\Interop\Linux\procfs\Interop.ProcFsStat.cs">
+       <Link>Common\Interop\Linux\procfs\Interop.ProcFsStat.cs</Link>
+     </Compile>
+@@ -69,6 +72,7 @@
+     <Compile Include="$(CommonPath)\CoreLib\System\PasteArguments.cs">
+       <Link>Common\CoreLib\System\PasteArguments.cs</Link>
+     </Compile>
++    <Compile Include="Tests\Interop\cgroupsTests.cs" />
+     <Compile Include="Tests\Interop\procfsTests.cs" />
+     <Compile Include="Tests\System\CharArrayHelpersTests.cs" />
+     <Compile Include="Tests\System\IO\PathInternal.Tests.cs" />
+diff --git a/src/Common/tests/Tests/Interop/cgroupsTests.cs b/src/Common/tests/Tests/Interop/cgroupsTests.cs
+new file mode 100644
+index 000000000000..f16d9242879c
+--- /dev/null
++++ b/src/Common/tests/Tests/Interop/cgroupsTests.cs
+@@ -0,0 +1,107 @@
++﻿// Licensed to the .NET Foundation under one or more agreements.
++// The .NET Foundation licenses this file to you under the MIT license.
++// See the LICENSE file in the project root for more information.
++
++using System;
++using System.IO;
++using System.Text;
++using Xunit;
++
++namespace Common.Tests
++{
++    public class cgroupsTests
++    {
++        [Theory]
++        [InlineData(true, "0",  0)]
++        [InlineData(false, "max",  0)]
++        [InlineData(true, "1k",  1024)]
++        [InlineData(true, "1K",  1024)]
++        public static void ValidateTryReadMemoryValue(bool expectedResult, string valueText, ulong expectedValue)
++        {
++            string path = Path.GetTempFileName();
++            try
++            {
++                File.WriteAllText(path, valueText);
++
++                bool result = Interop.cgroups.TryReadMemoryValueFromFile(path, out ulong val);
++
++                Assert.Equal(expectedResult, result);
++                if (result)
++                {
++                    Assert.Equal(expectedValue, val);
++                }
++            }
++            finally
++            {
++                File.Delete(path);
++            }
++        }
++
++        [Theory]
++        [InlineData(false, "0 0 0:0 / /foo ignore ignore - overlay overlay ignore", "ignore", 0, "/", "/")]
++        [InlineData(true, "0 0 0:0 / /foo ignore ignore - cgroup2 cgroup2 ignore", "ignore", 2, "/", "/foo")]
++        [InlineData(true, "0 0 0:0 / /foo ignore ignore - cgroup2 cgroup2 ignore", "memory", 2, "/", "/foo")]
++        [InlineData(true, "0 0 0:0 / /foo ignore ignore - cgroup2 cgroup2 ignore", "cpu", 2, "/", "/foo")]
++        [InlineData(true, "0 0 0:0 / /foo ignore - cgroup2 cgroup2 ignore", "cpu", 2, "/", "/foo")]
++        [InlineData(true, "0 0 0:0 / /foo ignore ignore ignore - cgroup2 cgroup2 ignore", "cpu", 2, "/", "/foo")]
++        [InlineData(true, "0 0 0:0 / /foo-with-dashes ignore ignore - cgroup2 cgroup2 ignore", "ignore", 2, "/", "/foo-with-dashes")]
++        [InlineData(true, "0 0 0:0 / /foo ignore ignore - cgroup cgroup memory", "memory", 1, "/", "/foo")]
++        [InlineData(true, "0 0 0:0 / /foo-with-dashes ignore ignore - cgroup cgroup memory", "memory", 1, "/", "/foo-with-dashes")]
++        [InlineData(true, "0 0 0:0 / /foo ignore ignore - cgroup cgroup cpu,memory", "memory", 1, "/", "/foo")]
++        [InlineData(true, "0 0 0:0 / /foo ignore ignore - cgroup cgroup memory,cpu", "memory", 1, "/", "/foo")]
++        [InlineData(false, "0 0 0:0 / /foo ignore ignore - cgroup cgroup cpu", "memory", 0, "/", "/foo")]
++        public static void ParseValidateMountInfo(bool found, string procSelfMountInfoText, string subsystem, int expectedVersion, string expectedRoot, string expectedMount)
++        {
++            string path = Path.GetTempFileName();
++            try
++            {
++                File.WriteAllText(path, procSelfMountInfoText);
++
++                bool result = Interop.cgroups.TryFindHierarchyMount(path, subsystem,  out Interop.cgroups.CGroupVersion version, out string root, out string mount);
++
++                Assert.Equal(found, result);
++                if (found)
++                {
++                    Assert.Equal(expectedVersion, (int)version);
++                    Assert.Equal(expectedRoot, root);
++                    Assert.Equal(expectedMount, mount);
++                }
++            }
++            finally
++            {
++                File.Delete(path);
++            }
++        }
++
++        [Theory]
++        [InlineData(true, "0::/foo", "ignore", "/foo")]
++        [InlineData(true, "0::/bar", "ignore", "/bar")]
++        [InlineData(true, "0::frob", "ignore", "frob")]
++        [InlineData(false, "1::frob", "ignore", "ignore")]
++        [InlineData(true, "1:foo:bar", "foo", "bar")]
++        [InlineData(true, "2:foo:bar", "foo", "bar")]
++        [InlineData(false, "2:foo:bar", "bar", "ignore")]
++        [InlineData(true, "1:foo:bar\n2:eggs:spam", "foo", "bar")]
++        [InlineData(true, "1:foo:bar\n2:eggs:spam", "eggs", "spam")]
++        public static void ParseValidateProcCGroup(bool found, string procSelfCgroupText, string subsystem, string expectedMountPath)
++        {
++            string path = Path.GetTempFileName();
++            try
++            {
++                File.WriteAllText(path, procSelfCgroupText);
++
++                bool result = Interop.cgroups.TryFindCGroupPathForSubsystem(path, subsystem,  out string mountPath);
++
++                Assert.Equal(found, result);
++                if (found)
++                {
++                    Assert.Equal(expectedMountPath, mountPath);
++                }
++            }
++            finally
++            {
++                File.Delete(path);
++            }
++        }
++    }
++}
+diff --git a/src/System.Runtime.InteropServices.RuntimeInformation/tests/DescriptionNameTests.cs b/src/System.Runtime.InteropServices.RuntimeInformation/tests/DescriptionNameTests.cs
+index 910af2fd82b4..73f692898dbc 100644
+--- a/src/System.Runtime.InteropServices.RuntimeInformation/tests/DescriptionNameTests.cs
++++ b/src/System.Runtime.InteropServices.RuntimeInformation/tests/DescriptionNameTests.cs
+@@ -40,7 +40,7 @@ public void DumpRuntimeInformationToConsole()
+ 
+             Console.WriteLine($"### CURRENT DIRECTORY: {Environment.CurrentDirectory}");
+ 
+-            string cgroupsLocation = Interop.cgroups.s_cgroupMemoryPath;
++            string cgroupsLocation = Interop.cgroups.s_cgroupMemoryLimitPath;
+             if (cgroupsLocation != null)
+             {
+                 Console.WriteLine($"### CGROUPS MEMORY: {cgroupsLocation}");
+

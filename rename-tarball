@@ -1,0 +1,49 @@
+#!/bin/bash
+
+# Usage:
+#     ./rename-tarball original-name.tar.gz new-name.tar.gz
+
+set -euo pipefail
+IFS=$'\n\t'
+
+positional_args=()
+while [[ "$#" -gt 0 ]]; do
+    arg="${1}"
+    case "${arg}" in
+        -h|--help)
+            print_usage
+            exit 0
+            ;;
+        *)
+            positional_args+=("$1")
+            shift
+            ;;
+    esac
+done
+
+original_name=${positional_args[0]:-}
+if [[ -z ${original_name} ]]; then
+    echo "error: missing original tarball name"
+    exit 1
+fi
+
+new_name=${positional_args[1]:-}
+if [[ -z ${new_name} ]]; then
+    echo "error: missing new tarball name"
+    exit 1
+fi
+
+original_name=${original_name/%.tar.gz}
+new_name=${new_name/.tar.gz}
+
+echo "Original: ${original_name}.tar.gz"
+echo "New name: ${new_name}.tar.gz"
+
+mkdir "temp-${new_name}"
+pushd "temp-${new_name}"
+tar xf "../${original_name}.tar.gz"
+mv "${original_name}" "${new_name}"
+tar czf ../"${new_name}.tar.gz" "${new_name}"
+rm -rf "${new_name}"
+popd
+rmdir "temp-${new_name}"
