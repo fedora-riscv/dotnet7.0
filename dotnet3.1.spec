@@ -1,4 +1,4 @@
-%bcond_without bootstrap
+%bcond_with bootstrap
 
 # Avoid provides/requires from private libraries
 %global privlibs             libhostfxr
@@ -56,7 +56,7 @@
 
 Name:           dotnet3.1
 Version:        %{sdk_rpm_version}
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        .NET Core Runtime and SDK
 License:        MIT and ASL 2.0 and BSD and LGPLv2+ and CC-BY and CC0 and MS-PL and EPL-1.0 and GPL+ and GPLv2 and ISC and OFL and zlib
 URL:            https://github.com/dotnet/
@@ -499,6 +499,9 @@ echo "Testing build results for debug symbols..."
 
 
 %changelog
+* Thu Feb 27 2020 Omair Majid <omajid@redhat.com> - 3.1.101-2
+- Disable bootstrap
+
 * Tue Jan 21 2020 Omair Majid <omajid@redhat.com> - 3.1.101-1
 - Update to .NET Core Runtime 3.1.1 and SDK 3.1.101
 
