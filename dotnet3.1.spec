@@ -78,6 +78,8 @@ Patch103:       corefx-39633-cgroupv2-mountpoints.patch
 
 # Build with with hardening flags, including -pie
 Patch200:       coreclr-hardening-flags.patch
+# Fix build with clang 10
+Patch201:       coreclr-clang10.patch
 
 # Build with with hardening flags, including -pie
 Patch300:       core-setup-hardening-flags.patch
@@ -112,6 +114,7 @@ BuildRequires:  lttng-ust-devel
 BuildRequires:  make
 BuildRequires:  openssl-devel
 BuildRequires:  python3
+BuildRequires:  systemtap-sdt-devel
 BuildRequires:  tar
 BuildRequires:  zlib-devel
 
@@ -347,6 +350,7 @@ popd
 
 pushd src/coreclr.*
 %patch200 -p1
+%patch201 -p1
 popd
 
 pushd src/dotnet-core-setup.*
