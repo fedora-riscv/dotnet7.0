@@ -1,4 +1,4 @@
-%bcond_with bootstrap
+%bcond_without bootstrap
 
 # Avoid provides/requires from private libraries
 %global privlibs             libhostfxr
@@ -56,7 +56,7 @@
 
 Name:           dotnet3.1
 Version:        %{sdk_rpm_version}
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        .NET Core Runtime and SDK
 License:        MIT and ASL 2.0 and BSD and LGPLv2+ and CC-BY and CC0 and MS-PL and EPL-1.0 and GPL+ and GPLv2 and ISC and OFL and zlib
 URL:            https://github.com/dotnet/
@@ -67,6 +67,8 @@ Source0:        dotnet-v%{sdk_version}-SDK.tar.gz
 Source1:        check-debug-symbols.py
 Source2:        dotnet.sh.in
 
+Patch1:         sdk-rid.patch
+
 # Fix building with our additional CFLAGS/CXXFLAGS/LDFLAGS
 Patch100:       corefx-optflags-support.patch
 
@@ -75,6 +77,9 @@ Patch100:       corefx-optflags-support.patch
 Patch101:       corefx-39686-cgroupv2-01.patch
 Patch102:       corefx-39686-cgroupv2-02.patch
 Patch103:       corefx-39633-cgroupv2-mountpoints.patch
+
+# Add Fedora 33 RID to corefx
+Patch104:       corefx-42871-fedora-33-rid.patch
 
 # Build with with hardening flags, including -pie
 Patch200:       coreclr-hardening-flags.patch
@@ -346,6 +351,7 @@ pushd src/corefx.*
 %patch101 -p1
 %patch102 -p1
 %patch103 -p1
+%patch104 -p1
 popd
 
 pushd src/coreclr.*
@@ -379,6 +385,7 @@ cat /etc/os-release
 
 %if %{without bootstrap}
 cp -a %{_libdir}/dotnet .dotnet
+patch -p0 -i %{PATCH1}
 %endif
 
 export CFLAGS="%{dotnet_cflags}"
@@ -499,6 +506,10 @@ echo "Testing build results for debug symbols..."
 
 
 %changelog
+* Fri Feb 28 2020 Omair Majid <omajid@redhat.com> - 3.1.101-3
+- Enable bootstrap
+- Add Fedora 33 runtime ids
+
 * Thu Feb 27 2020 Omair Majid <omajid@redhat.com> - 3.1.101-2
 - Disable bootstrap
 

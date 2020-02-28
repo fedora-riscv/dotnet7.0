@@ -1,0 +1,33 @@
+--- .dotnet/sdk/3.1.101/RuntimeIdentifierGraph.json.orig	2020-02-27 19:48:57.286692828 -0500
++++ .dotnet/sdk/3.1.101/RuntimeIdentifierGraph.json	2020-02-27 19:49:17.185262594 -0500
+@@ -488,6 +488,23 @@
+         "fedora-x64"
+       ]
+     },
++    "fedora.33": {
++      "#import": [
++        "fedora"
++      ]
++    },
++    "fedora.33-arm64": {
++      "#import": [
++        "fedora.33",
++        "fedora-arm64"
++      ]
++    },
++    "fedora.33-x64": {
++      "#import": [
++        "fedora.33",
++        "fedora-x64"
++      ]
++    },
+     "freebsd": {
+       "#import": [
+         "unix"
+@@ -2042,4 +2059,4 @@
+       ]
+     }
+   }
+-}
+\ No newline at end of file
++}
