@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # Usage:
-#     ./update-release runtime-version sdk-version
+#     ./update-release sdk-version runtime-version
 
 set -euo pipefail
 IFS=$'\n\t'
 
 print_usage() {
     echo " Usage:"
-    echo "     ./update-release runtime-version sdk-version"
+    echo "     ./update-release sdk-version runtime-version"
 }
 
 positional_args=()
@@ -28,18 +28,19 @@ done
 
 spec_file=dotnet3.1.spec
 
-runtime_version=${positional_args[0]:-}
-if [[ -z ${runtime_version} ]]; then
-    echo "error: missing runtime version"
-    exit 1
-fi
-host_version="$runtime_version"
-
-sdk_version=${positional_args[1]:-}
+sdk_version=${positional_args[0]:-}
 if [[ -z ${sdk_version} ]]; then
     echo "error: missing sdk version"
     exit 1
 fi
+
+runtime_version=${positional_args[1]:-}
+if [[ -z ${runtime_version} ]]; then
+    echo "error: missing runtime version"
+    exit 1
+fi
+
+host_version="$runtime_version"
 
 if [[ ! -f "dotnet-v${sdk_version}-SDK.tar.gz" ]]; then
     ./build-dotnet-tarball "v${sdk_version}-SDK"

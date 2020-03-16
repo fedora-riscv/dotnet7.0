@@ -20,11 +20,11 @@
 %global dotnet_cflags %(echo %optflags | sed -e 's/-fstack-clash-protection//' | sed -re 's/-specs=[^ ]*//g')
 %global dotnet_ldflags %(echo %{__global_ldflags} | sed -re 's/-specs=[^ ]*//g')
 
-%global host_version 3.1.1
-%global runtime_version 3.1.1
+%global host_version 3.1.2
+%global runtime_version 3.1.2
 %global aspnetcore_runtime_version %{runtime_version}
-%global sdk_version 3.1.101
-%global templates_version %{runtime_version}
+%global sdk_version 3.1.102
+%global templates_version %(echo %{runtime_version} | awk 'BEGIN { FS="."; OFS="." } {print $1, $2, $3+1 }')
 
 %global host_rpm_version %{host_version}
 %global aspnetcore_runtime_rpm_version %{aspnetcore_runtime_version}
@@ -56,7 +56,7 @@
 
 Name:           dotnet3.1
 Version:        %{sdk_rpm_version}
-Release:        4%{?dist}
+Release:        1%{?dist}
 Summary:        .NET Core Runtime and SDK
 License:        MIT and ASL 2.0 and BSD and LGPLv2+ and CC-BY and CC0 and MS-PL and EPL-1.0 and GPL+ and GPLv2 and ISC and OFL and zlib
 URL:            https://github.com/dotnet/
@@ -83,8 +83,8 @@ Patch104:       corefx-42871-fedora-33-rid.patch
 
 # Build with with hardening flags, including -pie
 Patch200:       coreclr-hardening-flags.patch
-# Fix build with clang 10
-Patch201:       coreclr-clang10.patch
+# Fix build with clang 10; Already applied at tarball-build time
+# Patch201:       coreclr-clang10.patch
 
 # Build with with hardening flags, including -pie
 Patch300:       core-setup-hardening-flags.patch
@@ -341,7 +341,7 @@ ln -s %{_libdir}/dotnet/reference-packages/Private.SourceBuild.ReferencePackages
 %endif
 
 # Fix bad hardcoded path in build
-sed -i 's|/usr/share/dotnet|%{_libdir}/dotnet|' src/dotnet-core-setup.*/src/corehost/common/pal.unix.cpp
+sed -i 's|/usr/share/dotnet|%{_libdir}/dotnet|' src/core-setup.*/src/corehost/common/pal.unix.cpp
 
 # Disable warnings
 sed -i 's|skiptests|skiptests ignorewarnings|' repos/coreclr.proj
@@ -356,14 +356,14 @@ popd
 
 pushd src/coreclr.*
 %patch200 -p1
-%patch201 -p1
+#%%patch201 -p1
 popd
 
-pushd src/dotnet-core-setup.*
+pushd src/core-setup.*
 %patch300 -p1
 popd
 
-pushd src/dotnet-cli.*
+pushd src/cli.*
 %patch500 -p1
 popd
 
@@ -392,8 +392,16 @@ export CFLAGS="%{dotnet_cflags}"
 export CXXFLAGS="%{dotnet_cflags}"
 export LDFLAGS="%{dotnet_ldflags}"
 
+#%%if %%{without bootstrap}
+#  --with-ref-packages %%{_libdir}/dotnet/reference-packages/ \
+#  --with-packages %%{_libdir}/dotnet/source-built-artifacts/*.tar.gz \
+#  --with-sdk %%{_libdir}/dotnet \
+#%%endif
+
 VERBOSE=1 ./build.sh \
+  -- \
   /v:n \
+  /p:SkipPortableRuntimeBuild=true \
   /p:LogVerbosity=n \
   /p:MinimalConsoleLogOutput=false \
   /p:ContinueOnPrebuiltBaselineError=true \
@@ -421,15 +429,13 @@ chmod 0755 %{buildroot}/%{_libdir}/dotnet/sdk/%{sdk_version}/AppHostTemplate/app
 chmod 0755 %{buildroot}/%{_libdir}/dotnet/packs/Microsoft.NETCore.App.Host.%{runtime_id}/%{runtime_version}/runtimes/%{runtime_id}/native/libnethost.so
 chmod 0755 %{buildroot}/%{_libdir}/dotnet/packs/Microsoft.NETCore.App.Host.%{runtime_id}/%{runtime_version}/runtimes/%{runtime_id}/native/apphost
 chmod 0644 %{buildroot}/%{_libdir}/dotnet/packs/Microsoft.NETCore.App.Host.%{runtime_id}/%{runtime_version}/runtimes/%{runtime_id}/native/nethost.h
-chmod 0644 %{buildroot}/%{_libdir}/dotnet/packs/Microsoft.AspNetCore.App.Ref/3.1.0/obj/Microsoft.AspNetCore.App.Ref.csproj.nuget.cache
-chmod 0644 %{buildroot}/%{_libdir}/dotnet/packs/Microsoft.AspNetCore.App.Ref/3.1.0/Microsoft.AspNetCore.App.Ref/3.1.0/Debug/netstandard2.0/Microsoft.AspNetCore.App.Ref.assets.cache
 
 install -dm 0755 %{buildroot}%{_sysconfdir}/profile.d/
 install dotnet.sh %{buildroot}%{_sysconfdir}/profile.d/
 
 install -dm 0755 %{buildroot}/%{_datadir}/bash-completion/completions
 # dynamic completion needs the file to be named the same as the base command
-install src/dotnet-cli.*/scripts/register-completions.bash %{buildroot}/%{_datadir}/bash-completion/completions/dotnet
+install src/cli.*/scripts/register-completions.bash %{buildroot}/%{_datadir}/bash-completion/completions/dotnet
 
 # TODO: the zsh completion script needs to be ported to use #compdef
 #install -dm 755 %%{buildroot}/%%{_datadir}/zsh/site-functions
@@ -506,6 +512,9 @@ echo "Testing build results for debug symbols..."
 
 
 %changelog
+* Mon Mar 16 2020 Omair Majid <omajid@redhat.com> - 3.1.102-1
+- Update to .NET Core Runtime 3.1.2 and SDK 3.1.102
+
 * Fri Feb 28 2020 Omair Majid <omajid@redhat.com> - 3.1.101-4
 - Disable bootstrap
 
