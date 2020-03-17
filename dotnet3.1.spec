@@ -67,8 +67,6 @@ Source0:        dotnet-v%{sdk_version}-SDK.tar.gz
 Source1:        check-debug-symbols.py
 Source2:        dotnet.sh.in
 
-Patch1:         sdk-rid.patch
-
 # Fix building with our additional CFLAGS/CXXFLAGS/LDFLAGS
 Patch100:       corefx-optflags-support.patch
 
@@ -102,6 +100,7 @@ BuildRequires:  dotnet-build-reference-packages
 BuildRequires:  dotnet-sdk-3.1
 BuildRequires:  dotnet-sdk-3.1-source-built-artifacts
 %endif
+BuildRequires:  findutils
 BuildRequires:  git
 %if 0%{?fedora} || 0%{?rhel} > 7
 BuildRequires:  glibc-langpack-en
@@ -384,8 +383,8 @@ find -iname 'nuget.config' -exec echo {}: \; -exec cat {} \; -exec echo \;
 cat /etc/os-release
 
 %if %{without bootstrap}
-cp -a %{_libdir}/dotnet .dotnet
-patch -p0 -i %{PATCH1}
+# We need to create a copy because we will mutate this
+cp -a %{_libdir}/dotnet previously-built-dotnet
 %endif
 
 export CFLAGS="%{dotnet_cflags}"
@@ -399,12 +398,15 @@ export LDFLAGS="%{dotnet_ldflags}"
 #%%endif
 
 VERBOSE=1 ./build.sh \
-  -- \
-  /v:n \
-  /p:SkipPortableRuntimeBuild=true \
-  /p:LogVerbosity=n \
-  /p:MinimalConsoleLogOutput=false \
-  /p:ContinueOnPrebuiltBaselineError=true \
+%if %{without bootstrap}
+    --with-sdk previously-built-dotnet \
+%endif
+    -- \
+    /v:n \
+    /p:SkipPortableRuntimeBuild=true \
+    /p:LogVerbosity=n \
+    /p:MinimalConsoleLogOutput=false \
+    /p:ContinueOnPrebuiltBaselineError=true \
 
 
 sed -e 's|[@]LIBDIR[@]|%{_libdir}|g' %{SOURCE2} > dotnet.sh

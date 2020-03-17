@@ -1,0 +1,38 @@
+---
+- hosts: localhost
+  roles:
+  - role: standard-test-basic
+    tags:
+    - classic
+    - container
+    - atomic
+    repositories:
+    - repo: "https://github.com/redhat-developer/dotnet-bunny.git"
+      dest: "dotnet-bunny"
+    - repo: "https://github.com/redhat-developer/dotnet-regular-tests.git"
+      dest: "dotnet-regular-tests"
+    tests:
+      - build_test_suite:
+          dir: dotnet-bunny
+          run: make
+      - print_test_suite_version:
+          dir: dotnet-bunny
+          run: bin/turkey --version
+      - run_regular_tests:
+          dir: dotnet-regular-tests
+          run: ../dotnet-bunny/bin/turkey -l={{ remote_artifacts }}
+    required_packages:
+    - babeltrace
+    - bash-completion
+    - binutils
+    - expect
+    - git
+    - jq
+    - lldb
+    - lttng-tools
+    - make
+    - npm
+    - python3
+    - strace
+    - wget
+    - which
