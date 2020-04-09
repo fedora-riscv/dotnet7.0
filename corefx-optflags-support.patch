@@ -2,9 +2,10 @@ diff --git a/src/Native/Unix/CMakeLists.txt b/src/Native/Unix/CMakeLists.txt
 index 7d804a1e54..717c2718d7 100644
 --- a/src/Native/Unix/CMakeLists.txt
 +++ b/src/Native/Unix/CMakeLists.txt
-@@ -25,7 +25,6 @@ add_compile_options(-fPIC)
+@@ -25,7 +25,7 @@ add_compile_options(-fPIC)
      add_compile_options(-Wthread-safety)
      add_compile_options(-Wno-thread-safety-analysis)
++    add_compile_options(-Wno-alloca)
  endif()
 -add_compile_options(-Werror)
  

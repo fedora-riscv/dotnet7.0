@@ -20,10 +20,12 @@
 %global dotnet_cflags %(echo %optflags | sed -e 's/-fstack-clash-protection//' | sed -re 's/-specs=[^ ]*//g')
 %global dotnet_ldflags %(echo %{__global_ldflags} | sed -re 's/-specs=[^ ]*//g')
 
-%global host_version 3.1.2
-%global runtime_version 3.1.2
+%global host_version 3.1.3
+%global runtime_version 3.1.3
 %global aspnetcore_runtime_version %{runtime_version}
-%global sdk_version 3.1.102
+%global sdk_version 3.1.103
+# upstream respun this release, so the tag doesn't exactly match
+%global src_version %{sdk_version}.2
 %global templates_version %(echo %{runtime_version} | awk 'BEGIN { FS="."; OFS="." } {print $1, $2, $3+1 }')
 
 %global host_rpm_version %{host_version}
@@ -62,8 +64,8 @@ License:        MIT and ASL 2.0 and BSD and LGPLv2+ and CC-BY and CC0 and MS-PL 
 URL:            https://github.com/dotnet/
 
 # The source is generated on a Fedora box via:
-# ./build-dotnet-tarball v%%{sdk_version}-SDK
-Source0:        dotnet-v%{sdk_version}-SDK.tar.gz
+# ./build-dotnet-tarball v%%{src_version}-SDK
+Source0:        dotnet-v%{src_version}-SDK.tar.gz
 Source1:        check-debug-symbols.py
 Source2:        dotnet.sh.in
 
@@ -319,7 +321,7 @@ These are not meant for general use.
 
 
 %prep
-%setup -q -n dotnet-v%{sdk_version}-SDK
+%setup -q -n dotnet-v%{src_version}-SDK
 
 %if %{without bootstrap}
 # Remove all prebuilts
@@ -328,12 +330,12 @@ find -iname '*.so' -type f -delete
 find -iname '*.tar.gz' -type f -delete
 find -iname '*.nupkg' -type f -delete
 find -iname '*.zip' -type f -delete
-rm -r .dotnet/
+rm -rf .dotnet/
 rm -r packages/source-built
 %endif
 
 %if %{without bootstrap}
-sed -i -e 's|3.1.100-preview1-014459|3.1.101|' global.json
+sed -i -e 's|3.1.100-preview1-014459|3.1.102|' global.json
 mkdir -p packages/archive
 ln -s %{_libdir}/dotnet/source-built-artifacts/*.tar.gz packages/archive/
 ln -s %{_libdir}/dotnet/reference-packages/Private.SourceBuild.ReferencePackages*.tar.gz packages/archive
@@ -514,6 +516,9 @@ echo "Testing build results for debug symbols..."
 
 
 %changelog
+* Thu Apr 09 2020 Chris Rummel <crummel@microsoft.com> - 3.1.103-1
+- Update to .NET Core Runtime 3.1.3 and SDK 3.1.103
+
 * Mon Mar 16 2020 Omair Majid <omajid@redhat.com> - 3.1.102-1
 - Update to .NET Core Runtime 3.1.2 and SDK 3.1.102
 
