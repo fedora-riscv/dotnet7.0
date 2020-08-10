@@ -1,0 +1,50 @@
+#!/bin/bash
+
+set -euo pipefail
+
+set -x
+
+sdk_version=3.1.105
+
+arch=$(uname -m)
+if [[ $arch == "x86_64" ]]; then
+    arch=x64
+elif [[ $arch == "aarch64" ]]; then
+    arch=arm64
+fi
+
+if rpm -qa | grep libunwind; then
+    echo "error: libunwind is installed. Not a good idea for bootstrapping."
+    exit 1
+fi
+if rpm -qa | grep dotnet ; then
+    echo "error: dotnet is installed. Not a good idea for bootstrapping."
+    exit 1
+fi
+if [ -d /usr/lib/dotnet ] || [ -d /usr/lib64/dotnet ] || [ -d /usr/share/dotnet ] ; then
+    echo "error: one of /usr/lib/dotnet /usr/lib64/dotnet or /usr/share/dotnet/ exists. Not a good idea for bootstrapping."
+    exit 1
+fi
+if command -v dotnet ; then
+    echo "error: dotnet is in $PATH. Not a good idea for bootstrapping."
+    exit 1
+fi
+
+if [ ! -d dotnet-source-build-tarball ]; then
+    if [ ! -d source-build ]; then
+        git clone https://github.com/dotnet/source-build
+    fi
+    pushd source-build
+    sed -i -e 's|cmakeargs -DCLR_CMAKE_USE_SYSTEM_LIBUNWIND=TRUE||' repos/coreclr.common.props
+    git clean -xdf
+    ./build-source-tarball.sh ../dotnet-source-build-tarball/ -- -p:DownloadSourceBuildReferencePackagesTimeoutSeconds=100000
+    popd
+fi
+
+rm -rf dotnet-v${sdk_version}-SDK dotnet-v${sdk_version}-SDK.tar.gz
+
+cp -a dotnet-source-build-tarball dotnet-v${sdk_version}-SDK
+cp -a source-build/artifacts/$arch/Release/Private.SourceBuilt.Artifacts.*.tar.gz dotnet-v${sdk_version}-SDK/packages/archive/Private.SourceBuilt.Artifacts.*.tar.gz
+
+tar czf dotnet-v${sdk_version}-SDK-$arch.tar.gz dotnet-v${sdk_version}-SDK
+

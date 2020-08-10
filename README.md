@@ -1,6 +1,6 @@
 # Overview
 
-This is the .NET Core 3.1 package for Fedora.
+This is the .NET Core 5.0 package for Fedora.
 
 This package is maintained by the Fedora DotNet SIG (Special Interest
 Group). You can find out more about the DotNet SIG at:
@@ -10,7 +10,7 @@ Group). You can find out more about the DotNet SIG at:
 - https://lists.fedoraproject.org/archives/list/dotnet-sig@lists.fedoraproject.org/
 
 Please report any issues [using
-bugzilla](https://bugzilla.redhat.com/enter_bug.cgi?product=Fedora&component=dotnet3.1).
+bugzilla](https://bugzilla.redhat.com/enter_bug.cgi?product=Fedora&component=dotnet5.0).
 
 # Specification
 
@@ -27,8 +27,8 @@ with one exception. It installs dotnet to `/usr/lib64/dotnet` (aka
 
 2. Checkout the forked repository.
 
-    - `git clone ssh://$USER@pkgs.fedoraproject.org/forks/$USER/rpms/dotnet3.1.git`
-    - `cd dotnet3.1`
+    - `git clone ssh://$USER@pkgs.fedoraproject.org/forks/$USER/rpms/dotnet5.0.git`
+    - `cd dotnet5.0`
 
 3. Make your changes. Don't forget to add a changelog.
 
@@ -71,8 +71,8 @@ with one exception. It installs dotnet to `/usr/lib64/dotnet` (aka
 
 2. Checkout the forked repository.
 
-    - `git clone ssh://$USER@pkgs.fedoraproject.org/forks/$USER/rpms/dotnet3.1.git`
-    - `cd dotnet3.1`
+    - `git clone ssh://$USER@pkgs.fedoraproject.org/forks/$USER/rpms/dotnet5.0.git`
+    - `cd dotnet5.0`
 
 3. Build the new upstream source tarball. Update the versions in the
    spec file. Add a changelog. This is generally automated by the

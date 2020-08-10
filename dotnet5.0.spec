@@ -1,4 +1,4 @@
-%bcond_with bootstrap
+%bcond_without bootstrap
 
 # Avoid provides/requires from private libraries
 %global privlibs             libhostfxr
@@ -20,22 +20,28 @@
 %global dotnet_cflags %(echo %optflags | sed -e 's/-fstack-clash-protection//' | sed -re 's/-specs=[^ ]*//g')
 %global dotnet_ldflags %(echo %{__global_ldflags} | sed -re 's/-specs=[^ ]*//g')
 
-%global host_version 3.1.3
-%global runtime_version 3.1.3
-%global aspnetcore_runtime_version %{runtime_version}
-%global sdk_version 3.1.103
-# upstream respun this release, so the tag doesn't exactly match
-%global src_version %{sdk_version}.2
-%global templates_version %(echo %{runtime_version} | awk 'BEGIN { FS="."; OFS="." } {print $1, $2, $3+1 }')
+%global host_version 5.0.0-preview.4.20251.6
+%global runtime_version 5.0.0-preview.4.20251.6
+%global aspnetcore_runtime_version 5.0.0-preview.4.20257.10
+%global sdk_version 5.0.100-preview.4.20161.13
+%global templates_version 5.0.0-preview.4.20161.13
+#%%global templates_version %%(echo %%{runtime_version} | awk 'BEGIN { FS="."; OFS="." } {print $1, $2, $3+1 }')
 
-%global host_rpm_version %{host_version}
-%global aspnetcore_runtime_rpm_version %{aspnetcore_runtime_version}
-%global runtime_rpm_version %{runtime_version}
-%global sdk_rpm_version %{sdk_version}
+%global host_rpm_version 5.0.0
+%global aspnetcore_runtime_rpm_version 5.0.0
+%global runtime_rpm_version 5.0.0
+%global sdk_rpm_version 5.0.100
+
+# upstream can update releases without revving the SDK version so these don't always match
+%global src_version %{sdk_rpm_version}
 
 %if 0%{?fedora} || 0%{?rhel} < 8
 %global use_bundled_libunwind 0
 %else
+%global use_bundled_libunwind 1
+%endif
+
+%ifarch aarch64
 %global use_bundled_libunwind 1
 %endif
 
@@ -56,42 +62,34 @@
 %endif
 %endif
 
-Name:           dotnet3.1
+Name:           dotnet5.0
 Version:        %{sdk_rpm_version}
-Release:        1%{?dist}
+Release:        0.2.preview4%{?dist}
 Summary:        .NET Core Runtime and SDK
 License:        MIT and ASL 2.0 and BSD and LGPLv2+ and CC-BY and CC0 and MS-PL and EPL-1.0 and GPL+ and GPLv2 and ISC and OFL and zlib
 URL:            https://github.com/dotnet/
 
 # The source is generated on a Fedora box via:
 # ./build-dotnet-tarball v%%{src_version}-SDK
-Source0:        dotnet-v%{src_version}-SDK.tar.gz
+Source0:        dotnet-v%{src_version}-preview4-SDK.tar.gz
 Source1:        check-debug-symbols.py
 Source2:        dotnet.sh.in
 
+# dotnet/runtime PR 39044
+Patch100:       runtime-39044-cmake-downgrade.patch
+
+# TODO: upstream this patch
+# Do not strip debuginfo from (native/unmanaged) binaries
+Patch101:       runtime-dont-strip.patch
+
+# TODO: upstream this patch
 # Fix building with our additional CFLAGS/CXXFLAGS/LDFLAGS
-Patch100:       corefx-optflags-support.patch
-
-# Add some support for cgroupv2 in corefx
-# All these patches are upstreamed for 5.0
-Patch101:       corefx-39686-cgroupv2-01.patch
-Patch102:       corefx-39686-cgroupv2-02.patch
-Patch103:       corefx-39633-cgroupv2-mountpoints.patch
-
-# Add Fedora 33 RID to corefx
-Patch104:       corefx-42871-fedora-33-rid.patch
-
-# Build with with hardening flags, including -pie
-Patch200:       coreclr-hardening-flags.patch
-# Fix build with clang 10; Already applied at tarball-build time
-# Patch201:       coreclr-clang10.patch
-
-# Build with with hardening flags, including -pie
-Patch300:       core-setup-hardening-flags.patch
+Patch102:       runtime-flags-support.patch
 
 # Disable telemetry by default; make it opt-in
-Patch500:       cli-telemetry-optout.patch
+Patch500:       sdk-telemetry-optout.patch
 
+# ExclusiveArch:  aarch64 x86_64
 ExclusiveArch:  x86_64
 
 BuildRequires:  clang
@@ -99,8 +97,8 @@ BuildRequires:  cmake
 BuildRequires:  coreutils
 %if %{without bootstrap}
 BuildRequires:  dotnet-build-reference-packages
-BuildRequires:  dotnet-sdk-3.1
-BuildRequires:  dotnet-sdk-3.1-source-built-artifacts
+BuildRequires:  dotnet-sdk-5.0
+BuildRequires:  dotnet-sdk-5.0-source-built-artifacts
 %endif
 BuildRequires:  findutils
 BuildRequires:  git
@@ -141,7 +139,7 @@ application to drive everything.
 Version:        %{sdk_rpm_version}
 Summary:        .NET Core CLI tools and runtime
 
-Requires:       dotnet-sdk-3.1%{?_isa} >= %{sdk_rpm_version}-%{release}
+Requires:       dotnet-sdk-5.0%{?_isa} >= %{sdk_rpm_version}-%{release}
 
 %description -n dotnet
 .NET Core is a fast, lightweight and modular platform for creating
@@ -171,7 +169,7 @@ It particularly focuses on creating console applications, web
 applications and micro-services.
 
 
-%package -n dotnet-hostfxr-3.1
+%package -n dotnet-hostfxr-5.0
 
 Version:        %{host_rpm_version}
 Summary:        .NET Core command line host resolver
@@ -180,7 +178,7 @@ Summary:        .NET Core command line host resolver
 # provided by this package, or from a newer version of .NET Core
 Requires:       dotnet-host%{?_isa} >= %{host_rpm_version}-%{release}
 
-%description -n dotnet-hostfxr-3.1
+%description -n dotnet-hostfxr-5.0
 The .NET Core host resolver contains the logic to resolve and select
 the right version of the .NET Core SDK or runtime to use.
 
@@ -191,12 +189,12 @@ It particularly focuses on creating console applications, web
 applications and micro-services.
 
 
-%package -n dotnet-runtime-3.1
+%package -n dotnet-runtime-5.0
 
 Version:        %{runtime_rpm_version}
-Summary:        NET Core 3.1 runtime
+Summary:        NET Core 5.0 runtime
 
-Requires:       dotnet-hostfxr-3.1%{?_isa} >= %{host_rpm_version}-%{release}
+Requires:       dotnet-hostfxr-5.0%{?_isa} >= %{host_rpm_version}-%{release}
 
 # libicu is dlopen()ed
 Requires:       libicu%{?_isa}
@@ -205,7 +203,7 @@ Requires:       libicu%{?_isa}
 Provides: bundled(libunwind) = 1.3
 %endif
 
-%description -n dotnet-runtime-3.1
+%description -n dotnet-runtime-5.0
 The .NET Core runtime contains everything needed to run .NET Core applications.
 It includes a high performance Virtual Machine as well as the framework
 libraries used by .NET Core applications.
@@ -217,14 +215,14 @@ It particularly focuses on creating console applications, web
 applications and micro-services.
 
 
-%package -n aspnetcore-runtime-3.1
+%package -n aspnetcore-runtime-5.0
 
 Version:        %{aspnetcore_runtime_rpm_version}
-Summary:        ASP.NET Core 3.1 runtime
+Summary:        ASP.NET Core 5.0 runtime
 
-Requires:       dotnet-runtime-3.1%{?_isa} >= %{runtime_rpm_version}-%{release}
+Requires:       dotnet-runtime-5.0%{?_isa} >= %{runtime_rpm_version}-%{release}
 
-%description -n aspnetcore-runtime-3.1
+%description -n aspnetcore-runtime-5.0
 The ASP.NET Core runtime contains everything needed to run .NET Core
 web applications. It includes a high performance Virtual Machine as
 well as the framework libraries used by .NET Core applications.
@@ -236,16 +234,16 @@ It particularly focuses on creating console applications, web
 applications and micro-services.
 
 
-%package -n dotnet-templates-3.1
+%package -n dotnet-templates-5.0
 
 Version:        %{sdk_rpm_version}
-Summary:        .NET Core 3.1 templates
+Summary:        .NET Core 5.0 templates
 
 # Theoretically any version of the host should work. But lets aim for the one
 # provided by this package, or from a newer version of .NET Core
 Requires:       dotnet-host%{?_isa} >= %{host_rpm_version}-%{release}
 
-%description -n dotnet-templates-3.1
+%description -n dotnet-templates-5.0
 This package contains templates used by the .NET Core SDK.
 
 ASP.NET Core is a fast, lightweight and modular platform for creating
@@ -255,25 +253,25 @@ It particularly focuses on creating console applications, web
 applications and micro-services.
 
 
-%package -n dotnet-sdk-3.1
+%package -n dotnet-sdk-5.0
 
 Version:        %{sdk_rpm_version}
-Summary:        .NET Core 3.1 Software Development Kit
+Summary:        .NET Core 5.0 Software Development Kit
 
 Provides:       bundled(js-jquery)
 Provides:       bundled(npm)
 
-Requires:       dotnet-runtime-3.1%{?_isa} >= %{runtime_rpm_version}-%{release}
-Requires:       aspnetcore-runtime-3.1%{?_isa} >= %{aspnetcore_runtime_rpm_version}-%{release}
+Requires:       dotnet-runtime-5.0%{?_isa} >= %{runtime_rpm_version}-%{release}
+Requires:       aspnetcore-runtime-5.0%{?_isa} >= %{aspnetcore_runtime_rpm_version}-%{release}
 
-Requires:       dotnet-apphost-pack-3.1%{?_isa} >= %{runtime_rpm_version}-%{release}
-Requires:       dotnet-targeting-pack-3.1%{?_isa} >= %{runtime_rpm_version}-%{release}
-Requires:       aspnetcore-targeting-pack-3.1%{?_isa} >= %{aspnetcore_runtime_rpm_version}-%{release}
+Requires:       dotnet-apphost-pack-5.0%{?_isa} >= %{runtime_rpm_version}-%{release}
+Requires:       dotnet-targeting-pack-5.0%{?_isa} >= %{runtime_rpm_version}-%{release}
+Requires:       aspnetcore-targeting-pack-5.0%{?_isa} >= %{aspnetcore_runtime_rpm_version}-%{release}
 Requires:       netstandard-targeting-pack-2.1%{?_isa} >= %{sdk_rpm_version}-%{release}
 
-Requires:       dotnet-templates-3.1%{?_isa} >= %{sdk_rpm_version}-%{release}
+Requires:       dotnet-templates-5.0%{?_isa} >= %{sdk_rpm_version}-%{release}
 
-%description -n dotnet-sdk-3.1
+%description -n dotnet-sdk-5.0
 The .NET Core SDK is a collection of command line applications to
 create, build, publish and run .NET Core applications.
 
@@ -302,18 +300,18 @@ applications using the .NET Core SDK.
 %{_libdir}/dotnet/packs/%{5}
 }
 
-%dotnet_targeting_pack dotnet-apphost-pack-3.1 %{runtime_rpm_version} Microsoft.NETCore.App 3.1 Microsoft.NETCore.App.Host.%{runtime_id}
-%dotnet_targeting_pack dotnet-targeting-pack-3.1 %{runtime_rpm_version} Microsoft.NETCore.App 3.1 Microsoft.NETCore.App.Ref
-%dotnet_targeting_pack aspnetcore-targeting-pack-3.1 %{aspnetcore_runtime_rpm_version} Microsoft.AspNetCore.App 3.1 Microsoft.AspNetCore.App.Ref
+%dotnet_targeting_pack dotnet-apphost-pack-5.0 %{runtime_rpm_version} Microsoft.NETCore.App 5.0 Microsoft.NETCore.App.Host.%{runtime_id}
+%dotnet_targeting_pack dotnet-targeting-pack-5.0 %{runtime_rpm_version} Microsoft.NETCore.App 5.0 Microsoft.NETCore.App.Ref
+%dotnet_targeting_pack aspnetcore-targeting-pack-5.0 %{aspnetcore_runtime_rpm_version} Microsoft.AspNetCore.App 5.0 Microsoft.AspNetCore.App.Ref
 %dotnet_targeting_pack netstandard-targeting-pack-2.1 %{sdk_rpm_version} NETStandard.Library 2.1 NETStandard.Library.Ref
 
 
-%package -n dotnet-sdk-3.1-source-built-artifacts
+%package -n dotnet-sdk-5.0-source-built-artifacts
 
 Version:        %{sdk_rpm_version}
-Summary:        Internal package for building .NET Core 3.1 Software Development Kit
+Summary:        Internal package for building .NET Core 5.0 Software Development Kit
 
-%description -n dotnet-sdk-3.1-source-built-artifacts
+%description -n dotnet-sdk-5.0-source-built-artifacts
 The .NET Core source-built archive is a collection of packages needed
 to build the .NET Core SDK itself.
 
@@ -321,7 +319,7 @@ These are not meant for general use.
 
 
 %prep
-%setup -q -n dotnet-v%{src_version}-SDK
+%setup -q -n dotnet-v%{src_version}-preview4-SDK
 
 %if %{without bootstrap}
 # Remove all prebuilts
@@ -331,49 +329,43 @@ find -iname '*.tar.gz' -type f -delete
 find -iname '*.nupkg' -type f -delete
 find -iname '*.zip' -type f -delete
 rm -rf .dotnet/
-rm -r packages/source-built
+rm -rf packages/source-built
 %endif
 
 %if %{without bootstrap}
-sed -i -e 's|3.1.100-preview1-014459|3.1.102|' global.json
+sed -i -e 's|5.0.100-preview1-014459|5.0.103|' global.json
 mkdir -p packages/archive
 ln -s %{_libdir}/dotnet/source-built-artifacts/*.tar.gz packages/archive/
 ln -s %{_libdir}/dotnet/reference-packages/Private.SourceBuild.ReferencePackages*.tar.gz packages/archive
 %endif
 
 # Fix bad hardcoded path in build
-sed -i 's|/usr/share/dotnet|%{_libdir}/dotnet|' src/core-setup.*/src/corehost/common/pal.unix.cpp
+sed -i 's|/usr/share/dotnet|%{_libdir}/dotnet|' src/runtime.*/src/installer/corehost/cli/hostmisc/pal.unix.cpp
 
 # Disable warnings
-sed -i 's|skiptests|skiptests ignorewarnings|' repos/coreclr.proj
+sed -i 's|skiptests|skiptests ignorewarnings|' repos/runtime.common.props
 
-pushd src/corefx.*
+pushd src/runtime.*
 %patch100 -p1
 %patch101 -p1
 %patch102 -p1
-%patch103 -p1
-%patch104 -p1
 popd
 
-pushd src/coreclr.*
-%patch200 -p1
-#%%patch201 -p1
-popd
-
-pushd src/core-setup.*
-%patch300 -p1
-popd
-
-pushd src/cli.*
+pushd src/sdk.*
 %patch500 -p1
 popd
 
 # If CLR_CMAKE_USE_SYSTEM_LIBUNWIND=TRUE is misisng, add it back
-grep CLR_CMAKE_USE_SYSTEM_LIBUNWIND repos/coreclr.proj || \
-    sed -i 's|\$(BuildArguments) </BuildArguments>|$(BuildArguments) cmakeargs -DCLR_CMAKE_USE_SYSTEM_LIBUNWIND=TRUE</BuildArguments>|' repos/coreclr.proj
+grep CLR_CMAKE_USE_SYSTEM_LIBUNWIND repos/runtime.common.props || \
+    sed -i 's|\$(BuildArguments) </BuildArguments>|$(BuildArguments) cmakeargs -DCLR_CMAKE_USE_SYSTEM_LIBUNWIND=TRUE</BuildArguments>|' repos/runtime.common.props
 
 %if %{use_bundled_libunwind}
-sed -i 's|-DCLR_CMAKE_USE_SYSTEM_LIBUNWIND=TRUE|-DCLR_CMAKE_USE_SYSTEM_LIBUNWIND=FALSE|' repos/coreclr.proj
+sed -i 's|-DCLR_CMAKE_USE_SYSTEM_LIBUNWIND=TRUE|-DCLR_CMAKE_USE_SYSTEM_LIBUNWIND=FALSE|' repos/runtime.common.props
+%endif
+
+%ifnarch x86_64
+mkdir -p artifacts/obj/%{runtime_arch}/Release
+cp artifacts/obj/x64/Release/PackageVersions.props artifacts/obj/%{runtime_arch}/Release/PackageVersions.props
 %endif
 
 cat source-build-info.txt
@@ -389,9 +381,9 @@ cat /etc/os-release
 cp -a %{_libdir}/dotnet previously-built-dotnet
 %endif
 
-export CFLAGS="%{dotnet_cflags}"
-export CXXFLAGS="%{dotnet_cflags}"
-export LDFLAGS="%{dotnet_ldflags}"
+export EXTRA_CFLAGS="%{dotnet_cflags}"
+export EXTRA_CXXFLAGS="%{dotnet_cflags}"
+export EXTRA_LDFLAGS="%%{dotnet_ldflags}"
 
 #%%if %%{without bootstrap}
 #  --with-ref-packages %%{_libdir}/dotnet/reference-packages/ \
@@ -416,11 +408,11 @@ sed -e 's|[@]LIBDIR[@]|%{_libdir}|g' %{SOURCE2} > dotnet.sh
 
 %install
 install -dm 0755 %{buildroot}%{_libdir}/dotnet
-ls bin/%{runtime_arch}/Release
-tar xf bin/%{runtime_arch}/Release/dotnet-sdk-%{sdk_version}-%{runtime_id}.tar.gz -C %{buildroot}%{_libdir}/dotnet/
+ls artifacts/%{runtime_arch}/Release
+tar xf artifacts/%{runtime_arch}/Release/dotnet-sdk-%{sdk_rpm_version}-preview.4.20161.13-%{runtime_id}.tar.gz -C %{buildroot}%{_libdir}/dotnet/
 
 # Install managed symbols
-tar xf bin/%{runtime_arch}/Release/runtime/dotnet-runtime-symbols-%{runtime_version}-%{runtime_id}.tar.gz \
+tar xf artifacts/%{runtime_arch}/Release/runtime/dotnet-runtime-symbols-%{runtime_version}-%{runtime_id}.tar.gz \
     -C %{buildroot}/%{_libdir}/dotnet/shared/Microsoft.NETCore.App/%{runtime_version}/
 
 # Fix executable permissions on files
@@ -439,7 +431,7 @@ install dotnet.sh %{buildroot}%{_sysconfdir}/profile.d/
 
 install -dm 0755 %{buildroot}/%{_datadir}/bash-completion/completions
 # dynamic completion needs the file to be named the same as the base command
-install src/cli.*/scripts/register-completions.bash %{buildroot}/%{_datadir}/bash-completion/completions/dotnet
+install src/sdk.*/scripts/register-completions.bash %{buildroot}/%{_datadir}/bash-completion/completions/dotnet
 
 # TODO: the zsh completion script needs to be ported to use #compdef
 #install -dm 755 %%{buildroot}/%%{_datadir}/zsh/site-functions
@@ -455,8 +447,8 @@ echo "%{_libdir}/dotnet" >> install_location
 install -dm 0755 %{buildroot}%{_sysconfdir}/dotnet
 install install_location %{buildroot}%{_sysconfdir}/dotnet/
 
-install -dm 0755 %{buildroot}%{_libdir}/dotnet/source-built-artifacts
-install bin/%{runtime_arch}/Release/Private.SourceBuilt.Artifacts.*.tar.gz %{buildroot}/%{_libdir}/dotnet/source-built-artifacts/
+#install -dm 0755 %%{buildroot}%%{_libdir}/dotnet/source-built-artifacts
+#install artifacts/%%{runtime_arch}/Release/Private.SourceBuilt.Artifacts.*.tar.gz %%{buildroot}/%%{_libdir}/dotnet/source-built-artifacts/
 
 # Check debug symbols in all elf objects. This is not in %%check
 # because native binaries are stripped by rpm-build after %%install.
@@ -487,35 +479,60 @@ echo "Testing build results for debug symbols..."
 %dir %{_datadir}/bash-completion/completions
 %{_datadir}/bash-completion/completions/dotnet
 
-%files -n dotnet-hostfxr-3.1
+%files -n dotnet-hostfxr-5.0
 %dir %{_libdir}/dotnet/host/fxr
 %{_libdir}/dotnet/host/fxr/%{host_version}
 
-%files -n dotnet-runtime-3.1
+%files -n dotnet-runtime-5.0
 %dir %{_libdir}/dotnet/shared
 %dir %{_libdir}/dotnet/shared/Microsoft.NETCore.App
 %{_libdir}/dotnet/shared/Microsoft.NETCore.App/%{runtime_version}
 
-%files -n aspnetcore-runtime-3.1
+%files -n aspnetcore-runtime-5.0
 %dir %{_libdir}/dotnet/shared
 %dir %{_libdir}/dotnet/shared/Microsoft.AspNetCore.App
 %{_libdir}/dotnet/shared/Microsoft.AspNetCore.App/%{aspnetcore_runtime_version}
 
-%files -n dotnet-templates-3.1
+%files -n dotnet-templates-5.0
 %dir %{_libdir}/dotnet/templates
 %{_libdir}/dotnet/templates/%{templates_version}
 
-%files -n dotnet-sdk-3.1
+%files -n dotnet-sdk-5.0
 %dir %{_libdir}/dotnet/sdk
 %{_libdir}/dotnet/sdk/%{sdk_version}
 %dir %{_libdir}/dotnet/packs
 
-%files -n dotnet-sdk-3.1-source-built-artifacts
-%dir %{_libdir}/dotnet
-%{_libdir}/dotnet/source-built-artifacts
+#%%files -n dotnet-sdk-5.0-source-built-artifacts
+#%%dir %%{_libdir}/dotnet
+#%%{_libdir}/dotnet/source-built-artifacts
 
 
 %changelog
+* Fri Jul 10 2020 Omair Majid <omajid@redhat.com> - 5.0.100-0.2.preview4
+- Fix building with custom CFLAGS/CXXFLAGS/LDFLAGS
+- Clean up patches
+
+* Mon Jul 06 2020 Omair Majid <omajid@redhat.com> - 5.0.100-0.1.preview4
+- Initial build
+
+* Sat Jun 27 2020 Omair Majid <omajid@redhat.com> - 3.1.105-4
+- Disable bootstrap
+
+* Fri Jun 26 2020 Omair Majid <omajid@redhat.com> - 3.1.105-3
+- Re-bootstrap aarch64
+
+* Fri Jun 19 2020 Omair Majid <omajid@redhat.com> - 3.1.105-3
+- Disable bootstrap
+
+* Thu Jun 18 2020 Omair Majid <omajid@redhat.com> - 3.1.105-1
+- Bootstrap aarch64
+
+* Tue Jun 16 2020 Chris Rummel <crummel@microsoft.com> - 3.1.105-1
+- Update to .NET Core Runtime 3.1.5 and SDK 3.1.105
+
+* Fri Jun 05 2020 Chris Rummel <crummel@microsoft.com> - 3.1.104-1
+- Update to .NET Core Runtime 3.1.4 and SDK 3.1.104
+
 * Thu Apr 09 2020 Chris Rummel <crummel@microsoft.com> - 3.1.103-1
 - Update to .NET Core Runtime 3.1.3 and SDK 3.1.103
 
@@ -716,4 +733,3 @@ echo "Testing build results for debug symbols..."
 - SPEC file cleanup
 * Wed Jan 11 2017 Nemanja Milosevic <nmilosev@fedoraproject.org> - 1.1.0-0
 - Initial RPM for Fedora 25/26.
-

@@ -1,0 +1,30 @@
+diff --git a/eng/native/build-commons.sh b/eng/native/build-commons.sh
+index b976f5fdc6c..853580b1c7a 100755
+--- a/eng/native/build-commons.sh
++++ b/eng/native/build-commons.sh
+@@ -163,6 +163,14 @@ EOF
+         return
+     fi
+ 
++    SAVED_CFLAGS="${CFLAGS}"
++    SAVED_CXXFLAGS="${CXXFLAGS}"
++    SAVED_LDFLAGS="${LDFLAGS}"
++
++    export CFLAGS="${CFLAGS} ${EXTRA_CFLAGS}"
++    export CXXFLAGS="${CXXFLAGS} ${EXTRA_CXXFLAGS}"
++    export LDFLAGS="${LDFLAGS} ${EXTRA_LDFLAGS}"
++
+     if [[ "$__StaticAnalyzer" == 1 ]]; then
+         pushd "$intermediatesDir"
+ 
+@@ -181,6 +189,10 @@ EOF
+         $cmake_command --build "$intermediatesDir" --target install -- -j "$__NumProc"
+     fi
+ 
++    CFLAGS="${SAVED_CFLAGS}"
++    CXXFLAGS="${SAVED_CXXFLAGS}"
++    LDFLAGS="${SAVED_LDFLAGS}"
++
+     local exit_code="$?"
+     if [[ "$exit_code" != 0 ]]; then
+         echo "${__ErrMsgPrefix}Failed to build \"$message\"."

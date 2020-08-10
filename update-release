@@ -26,7 +26,7 @@ while [[ "$#" -gt 0 ]]; do
     esac
 done
 
-spec_file=dotnet3.1.spec
+spec_file=dotnet5.0.spec
 
 sdk_version=${positional_args[0]:-}
 if [[ -z ${sdk_version} ]]; then

@@ -1,0 +1,47 @@
+Do not strip native/unmanaged symbols from binaries
+
+This is a hack. It rips out the calls to strip directly.
+
+The correct/upstreamable fix is to add a configure/build option to
+keep symbols for some builds, such as those needed by upstream.
+
+diff --git a/eng/native/functions.cmake b/eng/native/functions.cmake
+index 8b73581ed14..7697908425e 100644
+--- a/eng/native/functions.cmake
++++ b/eng/native/functions.cmake
+@@ -282,7 +282,7 @@ function(target_precompile_header)
+   endif(MSVC)
+ endfunction()
+ 
+-function(strip_symbols targetName outputFilename)
++function(strip_symbols_renamed targetName outputFilename)
+   if (CLR_CMAKE_HOST_UNIX)
+     set(strip_source_file $<TARGET_FILE:${targetName}>)
+ 
+@@ -336,8 +336,8 @@ function(strip_symbols targetName outputFilename)
+ endfunction()
+ 
+ function(install_with_stripped_symbols targetName kind destination)
+-    strip_symbols(${targetName} symbol_file)
+-    install_symbols(${symbol_file} ${destination})
++    # strip_symbols_renamed(${targetName} symbol_file)
++    # install_symbols(${symbol_file} ${destination})
+     if ("${kind}" STREQUAL "TARGETS")
+       set(install_source ${targetName})
+     elseif("${kind}" STREQUAL "PROGRAMS")
+@@ -375,13 +375,13 @@ function(install_clr)
+   foreach(targetName ${INSTALL_CLR_TARGETS})
+     list(FIND CLR_CROSS_COMPONENTS_LIST ${targetName} INDEX)
+     if (NOT DEFINED CLR_CROSS_COMPONENTS_LIST OR NOT ${INDEX} EQUAL -1)
+-        strip_symbols(${targetName} symbol_file)
++        # strip_symbols_renamed(${targetName} symbol_file)
+ 
+         foreach(destination ${destinations})
+           # We don't need to install the export libraries for our DLLs
+           # since they won't be directly linked against.
+           install(PROGRAMS $<TARGET_FILE:${targetName}> DESTINATION ${destination})
+-          install_symbols(${symbol_file} ${destination})
++          # install_symbols(${symbol_file} ${destination})
+ 
+           if(CLR_CMAKE_PGO_INSTRUMENT)
+               if(WIN32)
