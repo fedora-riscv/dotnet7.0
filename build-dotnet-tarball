@@ -93,6 +93,7 @@ if [ ! -f "${unmodified_tarball_name}.tar.gz" ]; then
     clean_dotnet_cache
     sed -i -e 's|cmakeargs -DCLR_CMAKE_USE_SYSTEM_LIBUNWIND=TRUE||' repos/runtime.common.props
     # FIXME remove contineuonprebuilterror
+    patch -p1 -i ../../build-additional-rids.patch
     ./build.sh -p:SkipPrebuiltEnforcement=true -p:ContinueOnPrebuiltBaselineError=true -p:ArchiveDownloadedPackages=true
     ./build-source-tarball.sh "${unmodified_tarball_name}" --skip-build -- -p:ContinueOnPrebuiltBaselineError=true -p:SkipPrebuiltEnforcement=true
     popd
@@ -110,10 +111,8 @@ mv "${unmodified_tarball_name}" "${tarball_name}"
 pushd "${tarball_name}"
 # Remove files with funny licenses, crypto implementations and other
 # not-very-useful artifacts to reduce tarball size
-rm -rf .dotnet
-find -type f -iname '*.tar.gz' -delete
-rm -r src/AspNetCore.*/src/SignalR/clients/java/signalr/gradle*
-find src/AspNetCore.*/src -type d -name samples -print0 | xargs -0 rm -r
+rm -r src/aspnetcore.*/src/SignalR/clients/java/signalr/gradle*
+find src/aspnetcore.*/src -type d -name samples -print0 | xargs -0 rm -r
 rm -r src/NuGet.Client.*/test/EndToEnd/ProjectTemplates/NetCoreWebApplication1.0.zip
 find src/runtime.*/ -depth -name tests -print0 | xargs -0 rm -r
 popd

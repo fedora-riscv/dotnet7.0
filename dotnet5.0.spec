@@ -20,11 +20,11 @@
 %global dotnet_cflags %(echo %optflags | sed -e 's/-fstack-clash-protection//' | sed -re 's/-specs=[^ ]*//g')
 %global dotnet_ldflags %(echo %{__global_ldflags} | sed -re 's/-specs=[^ ]*//g')
 
-%global host_version 5.0.0-preview.4.20251.6
-%global runtime_version 5.0.0-preview.4.20251.6
-%global aspnetcore_runtime_version 5.0.0-preview.4.20257.10
-%global sdk_version 5.0.100-preview.4.20161.13
-%global templates_version 5.0.0-preview.4.20161.13
+%global host_version 5.0.0-preview.8.20407.11
+%global runtime_version 5.0.0-preview.8.20407.11
+%global aspnetcore_runtime_version 5.0.0-preview.8.20414.8
+%global sdk_version 5.0.100-preview.8.20417.9
+%global templates_version 5.0.0-preview.8.20417.9
 #%%global templates_version %%(echo %%{runtime_version} | awk 'BEGIN { FS="."; OFS="." } {print $1, $2, $3+1 }')
 
 %global host_rpm_version 5.0.0
@@ -33,7 +33,7 @@
 %global sdk_rpm_version 5.0.100
 
 # upstream can update releases without revving the SDK version so these don't always match
-%global src_version %{sdk_rpm_version}
+%global src_version %{sdk_version}
 
 %if 0%{?fedora} || 0%{?rhel} < 8
 %global use_bundled_libunwind 0
@@ -64,25 +64,24 @@
 
 Name:           dotnet5.0
 Version:        %{sdk_rpm_version}
-Release:        0.2.preview4%{?dist}
-Summary:        .NET Core Runtime and SDK
+Release:        0.3.preview8%{?dist}
+Summary:        .NET Runtime and SDK
 License:        MIT and ASL 2.0 and BSD and LGPLv2+ and CC-BY and CC0 and MS-PL and EPL-1.0 and GPL+ and GPLv2 and ISC and OFL and zlib
 URL:            https://github.com/dotnet/
 
 # The source is generated on a Fedora box via:
 # ./build-dotnet-tarball v%%{src_version}-SDK
-Source0:        dotnet-v%{src_version}-preview4-SDK.tar.gz
+Source0:        dotnet-v%{src_version}-SDK.tar.gz
 Source1:        check-debug-symbols.py
 Source2:        dotnet.sh.in
 
-# dotnet/runtime PR 39044
-Patch100:       runtime-39044-cmake-downgrade.patch
-
-# TODO: upstream this patch
+# https://github.com/dotnet/runtime/pull/39203
 # Do not strip debuginfo from (native/unmanaged) binaries
-Patch101:       runtime-dont-strip.patch
-
-# TODO: upstream this patch
+Patch100:       runtime-dont-strip.patch
+# https://github.com/dotnet/runtime/pull/42094
+# Fix linker order when linking with --as-needed
+Patch101:       runtime-linker-order.patch
+# https://github.com/dotnet/runtime/pull/39191
 # Fix building with our additional CFLAGS/CXXFLAGS/LDFLAGS
 Patch102:       runtime-flags-support.patch
 
@@ -123,13 +122,13 @@ BuildRequires:  tar
 BuildRequires:  zlib-devel
 
 %description
-.NET Core is a fast, lightweight and modular platform for creating
+.NET is a fast, lightweight and modular platform for creating
 cross platform applications that work on Linux, macOS and Windows.
 
 It particularly focuses on creating console applications, web
 applications and micro-services.
 
-.NET Core contains a runtime conforming to .NET Standards a set of
+.NET contains a runtime conforming to .NET Standards a set of
 framework libraries, an SDK containing compilers and a 'dotnet'
 application to drive everything.
 
@@ -137,18 +136,18 @@ application to drive everything.
 %package -n dotnet
 
 Version:        %{sdk_rpm_version}
-Summary:        .NET Core CLI tools and runtime
+Summary:        .NET CLI tools and runtime
 
 Requires:       dotnet-sdk-5.0%{?_isa} >= %{sdk_rpm_version}-%{release}
 
 %description -n dotnet
-.NET Core is a fast, lightweight and modular platform for creating
+.NET is a fast, lightweight and modular platform for creating
 cross platform applications that work on Linux, macOS and Windows.
 
 It particularly focuses on creating console applications, web
 applications and micro-services.
 
-.NET Core contains a runtime conforming to .NET Standards a set of
+.NET contains a runtime conforming to .NET Standards a set of
 framework libraries, an SDK containing compilers and a 'dotnet'
 application to drive everything.
 
@@ -159,10 +158,10 @@ Version:        %{host_rpm_version}
 Summary:        .NET command line launcher
 
 %description -n dotnet-host
-The .NET Core host is a command line program that runs a standalone
-.NET core application or launches the SDK.
+The .NET host is a command line program that runs a standalone
+.NET application or launches the SDK.
 
-.NET Core is a fast, lightweight and modular platform for creating
+.NET is a fast, lightweight and modular platform for creating
 cross platform applications that work on Linux, Mac and Windows.
 
 It particularly focuses on creating console applications, web
@@ -172,17 +171,17 @@ applications and micro-services.
 %package -n dotnet-hostfxr-5.0
 
 Version:        %{host_rpm_version}
-Summary:        .NET Core command line host resolver
+Summary:        .NET command line host resolver
 
 # Theoretically any version of the host should work. But lets aim for the one
-# provided by this package, or from a newer version of .NET Core
+# provided by this package, or from a newer version of .NET
 Requires:       dotnet-host%{?_isa} >= %{host_rpm_version}-%{release}
 
 %description -n dotnet-hostfxr-5.0
-The .NET Core host resolver contains the logic to resolve and select
-the right version of the .NET Core SDK or runtime to use.
+The .NET host resolver contains the logic to resolve and select
+the right version of the .NET SDK or runtime to use.
 
-.NET Core is a fast, lightweight and modular platform for creating
+.NET is a fast, lightweight and modular platform for creating
 cross platform applications that work on Linux, Mac and Windows.
 
 It particularly focuses on creating console applications, web
@@ -192,7 +191,7 @@ applications and micro-services.
 %package -n dotnet-runtime-5.0
 
 Version:        %{runtime_rpm_version}
-Summary:        NET Core 5.0 runtime
+Summary:        NET 5.0 runtime
 
 Requires:       dotnet-hostfxr-5.0%{?_isa} >= %{host_rpm_version}-%{release}
 
@@ -204,11 +203,11 @@ Provides: bundled(libunwind) = 1.3
 %endif
 
 %description -n dotnet-runtime-5.0
-The .NET Core runtime contains everything needed to run .NET Core applications.
+The .NET runtime contains everything needed to run .NET applications.
 It includes a high performance Virtual Machine as well as the framework
-libraries used by .NET Core applications.
+libraries used by .NET applications.
 
-.NET Core is a fast, lightweight and modular platform for creating
+.NET is a fast, lightweight and modular platform for creating
 cross platform applications that work on Linux, Mac and Windows.
 
 It particularly focuses on creating console applications, web
@@ -223,9 +222,9 @@ Summary:        ASP.NET Core 5.0 runtime
 Requires:       dotnet-runtime-5.0%{?_isa} >= %{runtime_rpm_version}-%{release}
 
 %description -n aspnetcore-runtime-5.0
-The ASP.NET Core runtime contains everything needed to run .NET Core
+The ASP.NET Core runtime contains everything needed to run .NET
 web applications. It includes a high performance Virtual Machine as
-well as the framework libraries used by .NET Core applications.
+well as the framework libraries used by .NET applications.
 
 ASP.NET Core is a fast, lightweight and modular platform for creating
 cross platform web applications that work on Linux, Mac and Windows.
@@ -237,17 +236,17 @@ applications and micro-services.
 %package -n dotnet-templates-5.0
 
 Version:        %{sdk_rpm_version}
-Summary:        .NET Core 5.0 templates
+Summary:        .NET 5.0 templates
 
 # Theoretically any version of the host should work. But lets aim for the one
-# provided by this package, or from a newer version of .NET Core
+# provided by this package, or from a newer version of .NET
 Requires:       dotnet-host%{?_isa} >= %{host_rpm_version}-%{release}
 
 %description -n dotnet-templates-5.0
-This package contains templates used by the .NET Core SDK.
+This package contains templates used by the .NET SDK.
 
-ASP.NET Core is a fast, lightweight and modular platform for creating
-cross platform web applications that work on Linux, Mac and Windows.
+.NET is a fast, lightweight and modular platform for creating
+cross platform applications that work on Linux, Mac and Windows.
 
 It particularly focuses on creating console applications, web
 applications and micro-services.
@@ -256,7 +255,7 @@ applications and micro-services.
 %package -n dotnet-sdk-5.0
 
 Version:        %{sdk_rpm_version}
-Summary:        .NET Core 5.0 Software Development Kit
+Summary:        .NET 5.0 Software Development Kit
 
 Provides:       bundled(js-jquery)
 Provides:       bundled(npm)
@@ -272,10 +271,10 @@ Requires:       netstandard-targeting-pack-2.1%{?_isa} >= %{sdk_rpm_version}-%{r
 Requires:       dotnet-templates-5.0%{?_isa} >= %{sdk_rpm_version}-%{release}
 
 %description -n dotnet-sdk-5.0
-The .NET Core SDK is a collection of command line applications to
-create, build, publish and run .NET Core applications.
+The .NET SDK is a collection of command line applications to
+create, build, publish and run .NET applications.
 
-.NET Core is a fast, lightweight and modular platform for creating
+.NET is a fast, lightweight and modular platform for creating
 cross platform applications that work on Linux, Mac and Windows.
 
 It particularly focuses on creating console applications, web
@@ -293,7 +292,7 @@ Requires:       dotnet-host%{?_isa}
 %description -n %{1}
 This package provides a targeting pack for %{3} %{4}
 that allows developers to compile against and target %{3} %{4}
-applications using the .NET Core SDK.
+applications using the .NET SDK.
 
 %files -n %{1}
 %dir %{_libdir}/dotnet/packs
@@ -309,17 +308,17 @@ applications using the .NET Core SDK.
 %package -n dotnet-sdk-5.0-source-built-artifacts
 
 Version:        %{sdk_rpm_version}
-Summary:        Internal package for building .NET Core 5.0 Software Development Kit
+Summary:        Internal package for building .NET 5.0 Software Development Kit
 
 %description -n dotnet-sdk-5.0-source-built-artifacts
-The .NET Core source-built archive is a collection of packages needed
-to build the .NET Core SDK itself.
+The .NET source-built archive is a collection of packages needed
+to build the .NET SDK itself.
 
 These are not meant for general use.
 
 
 %prep
-%setup -q -n dotnet-v%{src_version}-preview4-SDK
+%setup -q -n dotnet-v%{src_version}-SDK
 
 %if %{without bootstrap}
 # Remove all prebuilts
@@ -383,7 +382,7 @@ cp -a %{_libdir}/dotnet previously-built-dotnet
 
 export EXTRA_CFLAGS="%{dotnet_cflags}"
 export EXTRA_CXXFLAGS="%{dotnet_cflags}"
-export EXTRA_LDFLAGS="%%{dotnet_ldflags}"
+export EXTRA_LDFLAGS="%{dotnet_ldflags}"
 
 #%%if %%{without bootstrap}
 #  --with-ref-packages %%{_libdir}/dotnet/reference-packages/ \
@@ -409,7 +408,7 @@ sed -e 's|[@]LIBDIR[@]|%{_libdir}|g' %{SOURCE2} > dotnet.sh
 %install
 install -dm 0755 %{buildroot}%{_libdir}/dotnet
 ls artifacts/%{runtime_arch}/Release
-tar xf artifacts/%{runtime_arch}/Release/dotnet-sdk-%{sdk_rpm_version}-preview.4.20161.13-%{runtime_id}.tar.gz -C %{buildroot}%{_libdir}/dotnet/
+tar xf artifacts/%{runtime_arch}/Release/dotnet-sdk-%{sdk_version}-%{runtime_id}.tar.gz -C %{buildroot}%{_libdir}/dotnet/
 
 # Install managed symbols
 tar xf artifacts/%{runtime_arch}/Release/runtime/dotnet-runtime-symbols-%{runtime_version}-%{runtime_id}.tar.gz \
@@ -421,10 +420,12 @@ find %{buildroot}%{_libdir}/dotnet/ -type f -name '*.pdb' -exec chmod -x {} \;
 find %{buildroot}%{_libdir}/dotnet/ -type f -name '*.props' -exec chmod -x {} \;
 find %{buildroot}%{_libdir}/dotnet/ -type f -name '*.pubxml' -exec chmod -x {} \;
 find %{buildroot}%{_libdir}/dotnet/ -type f -name '*.targets' -exec chmod -x {} \;
+find %{buildroot}%{_libdir}/dotnet/ -type f -name '*.a' -exec chmod -x {} \;
 chmod 0755 %{buildroot}/%{_libdir}/dotnet/sdk/%{sdk_version}/AppHostTemplate/apphost
-chmod 0755 %{buildroot}/%{_libdir}/dotnet/packs/Microsoft.NETCore.App.Host.%{runtime_id}/%{runtime_version}/runtimes/%{runtime_id}/native/libnethost.so
 chmod 0755 %{buildroot}/%{_libdir}/dotnet/packs/Microsoft.NETCore.App.Host.%{runtime_id}/%{runtime_version}/runtimes/%{runtime_id}/native/apphost
+chmod 0755 %{buildroot}/%{_libdir}/dotnet/packs/Microsoft.NETCore.App.Host.%{runtime_id}/%{runtime_version}/runtimes/%{runtime_id}/native/libnethost.so
 chmod 0644 %{buildroot}/%{_libdir}/dotnet/packs/Microsoft.NETCore.App.Host.%{runtime_id}/%{runtime_version}/runtimes/%{runtime_id}/native/nethost.h
+chmod 0755 %{buildroot}/%{_libdir}/dotnet/packs/Microsoft.NETCore.App.Host.%{runtime_id}/%{runtime_version}/runtimes/%{runtime_id}/native/singlefilehost
 
 install -dm 0755 %{buildroot}%{_sysconfdir}/profile.d/
 install dotnet.sh %{buildroot}%{_sysconfdir}/profile.d/
@@ -508,6 +509,9 @@ echo "Testing build results for debug symbols..."
 
 
 %changelog
+* Mon Sep 14 2020 Omair Majid <omajid@redhat.com> - 5.0.100-0.3.preview8
+- Update to Preview 8
+
 * Fri Jul 10 2020 Omair Majid <omajid@redhat.com> - 5.0.100-0.2.preview4
 - Fix building with custom CFLAGS/CXXFLAGS/LDFLAGS
 - Clean up patches
