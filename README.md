@@ -1,6 +1,6 @@
 # Overview
 
-This is the .NET Core 5.0 package for Fedora.
+This is the .NET 5.0 package for Fedora.
 
 This package is maintained by the Fedora DotNet SIG (Special Interest
 Group). You can find out more about the DotNet SIG at:

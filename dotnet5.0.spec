@@ -14,23 +14,23 @@
 %global __provides_exclude ^(%{privlibs})\\.so
 %global __requires_exclude ^(%{privlibs})\\.so
 
-# Filter flags not supported by clang
-#  -fstack-clash-protection
-#  -specs=
-%global dotnet_cflags %(echo %optflags | sed -e 's/-fstack-clash-protection//' | sed -re 's/-specs=[^ ]*//g')
-%global dotnet_ldflags %(echo %{__global_ldflags} | sed -re 's/-specs=[^ ]*//g')
+# LTO triggers a compilation error for a source level issue.  Given that LTO should not
+# change the validity of any given source and the nature of the error (undefined enum), I
+# suspect a generator program is mis-behaving in some way.  This needs further debugging,
+# until that's done, disable LTO.  This has to happen before setting the flags below.
+%define _lto_cflags %{nil}
 
-%global host_version 5.0.0-preview.8.20407.11
-%global runtime_version 5.0.0-preview.8.20407.11
-%global aspnetcore_runtime_version 5.0.0-preview.8.20414.8
-%global sdk_version 5.0.100-preview.8.20417.9
-%global templates_version 5.0.0-preview.8.20417.9
+%global host_version 5.0.0
+%global runtime_version 5.0.0
+%global aspnetcore_runtime_version 5.0.0
+%global sdk_version 5.0.100
+%global templates_version 5.0.0
 #%%global templates_version %%(echo %%{runtime_version} | awk 'BEGIN { FS="."; OFS="." } {print $1, $2, $3+1 }')
 
-%global host_rpm_version 5.0.0
-%global aspnetcore_runtime_rpm_version 5.0.0
-%global runtime_rpm_version 5.0.0
-%global sdk_rpm_version 5.0.100
+%global host_rpm_version %{host_version}
+%global aspnetcore_runtime_rpm_version %{aspnetcore_runtime_version}
+%global runtime_rpm_version %{runtime_version}
+%global sdk_rpm_version %{sdk_version}
 
 # upstream can update releases without revving the SDK version so these don't always match
 %global src_version %{sdk_version}
@@ -52,44 +52,36 @@
 %global runtime_arch arm64
 %endif
 
-%if 0%{?fedora}
-%global runtime_id fedora.%{fedora}-%{runtime_arch}
-%else
-%if 0%{?centos}
-%global runtime_id centos.%{centos}-%{runtime_arch}
-%else
-%global runtime_id rhel.%{rhel}-%{runtime_arch}
-%endif
-%endif
+%{!?runtime_id:%global runtime_id %(. /etc/os-release ; echo "${ID}.${VERSION_ID%%.*}")-%{runtime_arch}}
 
 Name:           dotnet5.0
 Version:        %{sdk_rpm_version}
-Release:        0.3.preview8%{?dist}
+Release:        1%{?dist}
 Summary:        .NET Runtime and SDK
 License:        MIT and ASL 2.0 and BSD and LGPLv2+ and CC-BY and CC0 and MS-PL and EPL-1.0 and GPL+ and GPLv2 and ISC and OFL and zlib
 URL:            https://github.com/dotnet/
 
 # The source is generated on a Fedora box via:
 # ./build-dotnet-tarball v%%{src_version}-SDK
-Source0:        dotnet-v%{src_version}-SDK.tar.gz
+Source0:        dotnet-v%{src_version}-SDK-337413b.tar.gz
 Source1:        check-debug-symbols.py
 Source2:        dotnet.sh.in
 
-# https://github.com/dotnet/runtime/pull/39203
-# Do not strip debuginfo from (native/unmanaged) binaries
-Patch100:       runtime-dont-strip.patch
+Patch1:         source-build-runtime-fixup-linker-order.patch
+
 # https://github.com/dotnet/runtime/pull/42094
 # Fix linker order when linking with --as-needed
-Patch101:       runtime-linker-order.patch
-# https://github.com/dotnet/runtime/pull/39191
-# Fix building with our additional CFLAGS/CXXFLAGS/LDFLAGS
-Patch102:       runtime-flags-support.patch
+Patch100:       runtime-linker-order.patch
 
 # Disable telemetry by default; make it opt-in
 Patch500:       sdk-telemetry-optout.patch
 
-# ExclusiveArch:  aarch64 x86_64
+%if 0%{?fedora} > 32 || 0%{?rhel} > 8
+ExclusiveArch:  aarch64 x86_64
+%else
 ExclusiveArch:  x86_64
+%endif
+
 
 BuildRequires:  clang
 BuildRequires:  cmake
@@ -318,7 +310,7 @@ These are not meant for general use.
 
 
 %prep
-%setup -q -n dotnet-v%{src_version}-SDK
+%setup -q -n dotnet-v%{src_version}-SDK-337413b
 
 %if %{without bootstrap}
 # Remove all prebuilts
@@ -344,23 +336,15 @@ sed -i 's|/usr/share/dotnet|%{_libdir}/dotnet|' src/runtime.*/src/installer/core
 # Disable warnings
 sed -i 's|skiptests|skiptests ignorewarnings|' repos/runtime.common.props
 
+%patch1 -p1
+
 pushd src/runtime.*
 %patch100 -p1
-%patch101 -p1
-%patch102 -p1
 popd
 
 pushd src/sdk.*
 %patch500 -p1
 popd
-
-# If CLR_CMAKE_USE_SYSTEM_LIBUNWIND=TRUE is misisng, add it back
-grep CLR_CMAKE_USE_SYSTEM_LIBUNWIND repos/runtime.common.props || \
-    sed -i 's|\$(BuildArguments) </BuildArguments>|$(BuildArguments) cmakeargs -DCLR_CMAKE_USE_SYSTEM_LIBUNWIND=TRUE</BuildArguments>|' repos/runtime.common.props
-
-%if %{use_bundled_libunwind}
-sed -i 's|-DCLR_CMAKE_USE_SYSTEM_LIBUNWIND=TRUE|-DCLR_CMAKE_USE_SYSTEM_LIBUNWIND=FALSE|' repos/runtime.common.props
-%endif
 
 %ifnarch x86_64
 mkdir -p artifacts/obj/%{runtime_arch}/Release
@@ -380,9 +364,37 @@ cat /etc/os-release
 cp -a %{_libdir}/dotnet previously-built-dotnet
 %endif
 
-export EXTRA_CFLAGS="%{dotnet_cflags}"
-export EXTRA_CXXFLAGS="%{dotnet_cflags}"
-export EXTRA_LDFLAGS="%{dotnet_ldflags}"
+%if 0%{?fedora} > 32 || 0%{?rhel} > 8
+# Setting this macro ensures that only clang supported options will be
+# added to ldflags and cflags.
+%global toolchain clang
+%set_build_flags
+%else
+# Filter flags not supported by clang
+%global dotnet_cflags %(echo %optflags | sed -re 's/-specs=[^ ]*//g')
+%global dotnet_ldflags %(echo %{__global_ldflags} | sed -re 's/-specs=[^ ]*//g')
+export CFLAGS="%{dotnet_cflags}"
+export CXXFLAGS="%{dotnet_cflags}"
+export LDFLAGS="%{dotnet_ldflags}"
+%endif
+
+%ifarch aarch64
+# -mbranch-protection=standard breaks unwinding in CoreCLR through libunwind
+CFLAGS=$(echo $CFLAGS | sed -e 's/-mbranch-protection=standard //')
+CXXFLAGS=$(echo $CXXFLAGS | sed -e 's/-mbranch-protection=standard //')
+%endif
+
+# -fstack-clash-protection breaks CoreCLR
+CFLAGS=$(echo $CFLAGS  | sed -e 's/-fstack-clash-protection//' )
+CXXFLAGS=$(echo $CXXFLAGS  | sed -e 's/-fstack-clash-protection//' )
+
+export EXTRA_CFLAGS="$CFLAGS"
+export EXTRA_CXXFLAGS="$CXXFLAGS"
+export EXTRA_LDFLAGS="$LDFLAGS"
+
+unset CFLAGS
+unset CXXFLAGS
+unset LDFLAGS
 
 #%%if %%{without bootstrap}
 #  --with-ref-packages %%{_libdir}/dotnet/reference-packages/ \
@@ -400,6 +412,11 @@ VERBOSE=1 ./build.sh \
     /p:LogVerbosity=n \
     /p:MinimalConsoleLogOutput=false \
     /p:ContinueOnPrebuiltBaselineError=true \
+%if %{use_bundled_libunwind}
+    /p:UseSystemLibunwind=false \
+%else
+    /p:UseSystemLibunwind=true \
+%endif
 
 
 sed -e 's|[@]LIBDIR[@]|%{_libdir}|g' %{SOURCE2} > dotnet.sh
@@ -415,12 +432,14 @@ tar xf artifacts/%{runtime_arch}/Release/runtime/dotnet-runtime-symbols-%{runtim
     -C %{buildroot}/%{_libdir}/dotnet/shared/Microsoft.NETCore.App/%{runtime_version}/
 
 # Fix executable permissions on files
+find %{buildroot}%{_libdir}/dotnet/ -type f -name '*.a' -exec chmod -x {} \;
 find %{buildroot}%{_libdir}/dotnet/ -type f -name '*.dll' -exec chmod -x {} \;
+find %{buildroot}%{_libdir}/dotnet/ -type f -name '*.h' -exec chmod -x {} \;
 find %{buildroot}%{_libdir}/dotnet/ -type f -name '*.pdb' -exec chmod -x {} \;
 find %{buildroot}%{_libdir}/dotnet/ -type f -name '*.props' -exec chmod -x {} \;
 find %{buildroot}%{_libdir}/dotnet/ -type f -name '*.pubxml' -exec chmod -x {} \;
 find %{buildroot}%{_libdir}/dotnet/ -type f -name '*.targets' -exec chmod -x {} \;
-find %{buildroot}%{_libdir}/dotnet/ -type f -name '*.a' -exec chmod -x {} \;
+find %{buildroot}%{_libdir}/dotnet/ -type f -name '*.xml' -exec chmod -x {} \;
 chmod 0755 %{buildroot}/%{_libdir}/dotnet/sdk/%{sdk_version}/AppHostTemplate/apphost
 chmod 0755 %{buildroot}/%{_libdir}/dotnet/packs/Microsoft.NETCore.App.Host.%{runtime_id}/%{runtime_version}/runtimes/%{runtime_id}/native/apphost
 chmod 0755 %{buildroot}/%{_libdir}/dotnet/packs/Microsoft.NETCore.App.Host.%{runtime_id}/%{runtime_version}/runtimes/%{runtime_id}/native/libnethost.so
@@ -509,6 +528,15 @@ echo "Testing build results for debug symbols..."
 
 
 %changelog
+* Fri Dec 04 13:22:13 EST 2020 Omair Majid <omajid@redhat.com> - 5.0.100-1
+- Update to .NET Core Runtime 5.0.0 and SDK 5.0.100
+
+* Thu Dec 03 2020 Omair Majid <omajid@redhat.com> - 5.0.100-0.4.20201202git337413b
+- Update to latest 5.0 pre-GA commit
+
+* Tue Nov 24 2020 Omair Majid <omajid@redhat.com> - 5.0.100-0.4.20201123gitdee899c
+- Update to 5.0 pre-GA commit
+
 * Mon Sep 14 2020 Omair Majid <omajid@redhat.com> - 5.0.100-0.3.preview8
 - Update to Preview 8
 
