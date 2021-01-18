@@ -63,7 +63,7 @@ URL:            https://github.com/dotnet/
 
 # The source is generated on a Fedora box via:
 # ./build-dotnet-tarball v%%{src_version}-SDK
-Source0:        dotnet-v%{src_version}-SDK-337413b.tar.gz
+Source0:        dotnet-9c4e5de-x64-bootstrap.tar.gz
 Source1:        check-debug-symbols.py
 Source2:        dotnet.sh.in
 
@@ -87,7 +87,7 @@ BuildRequires:  clang
 BuildRequires:  cmake
 BuildRequires:  coreutils
 %if %{without bootstrap}
-BuildRequires:  dotnet-build-reference-packages
+BuildRequires:  dotnet-5.0-build-reference-packages
 BuildRequires:  dotnet-sdk-5.0
 BuildRequires:  dotnet-sdk-5.0-source-built-artifacts
 %endif
@@ -310,7 +310,7 @@ These are not meant for general use.
 
 
 %prep
-%setup -q -n dotnet-v%{src_version}-SDK-337413b
+%setup -q -n dotnet-9c4e5de-x64-bootstrap
 
 %if %{without bootstrap}
 # Remove all prebuilts
@@ -324,10 +324,9 @@ rm -rf packages/source-built
 %endif
 
 %if %{without bootstrap}
-sed -i -e 's|5.0.100-preview1-014459|5.0.103|' global.json
 mkdir -p packages/archive
 ln -s %{_libdir}/dotnet/source-built-artifacts/*.tar.gz packages/archive/
-ln -s %{_libdir}/dotnet/reference-packages/Private.SourceBuild.ReferencePackages*.tar.gz packages/archive
+ln -s %{_libdir}/dotnet/reference-packages/*.tar.gz packages/archive
 %endif
 
 # Fix bad hardcoded path in build
@@ -467,8 +466,8 @@ echo "%{_libdir}/dotnet" >> install_location
 install -dm 0755 %{buildroot}%{_sysconfdir}/dotnet
 install install_location %{buildroot}%{_sysconfdir}/dotnet/
 
-#install -dm 0755 %%{buildroot}%%{_libdir}/dotnet/source-built-artifacts
-#install artifacts/%%{runtime_arch}/Release/Private.SourceBuilt.Artifacts.*.tar.gz %%{buildroot}/%%{_libdir}/dotnet/source-built-artifacts/
+install -dm 0755 %{buildroot}%{_libdir}/dotnet/source-built-artifacts
+install artifacts/%{runtime_arch}/Release/Private.SourceBuilt.Artifacts.*.tar.gz %{buildroot}/%{_libdir}/dotnet/source-built-artifacts/
 
 # Check debug symbols in all elf objects. This is not in %%check
 # because native binaries are stripped by rpm-build after %%install.
@@ -522,13 +521,16 @@ echo "Testing build results for debug symbols..."
 %{_libdir}/dotnet/sdk/%{sdk_version}
 %dir %{_libdir}/dotnet/packs
 
-#%%files -n dotnet-sdk-5.0-source-built-artifacts
-#%%dir %%{_libdir}/dotnet
-#%%{_libdir}/dotnet/source-built-artifacts
+%files -n dotnet-sdk-5.0-source-built-artifacts
+%dir %{_libdir}/dotnet
+%{_libdir}/dotnet/source-built-artifacts
 
 
 %changelog
-* Fri Dec 04 13:22:13 EST 2020 Omair Majid <omajid@redhat.com> - 5.0.100-1
+* Fri Dec 18 2020 Omair Majid <omajid@redhat.com> - 5.0.100-2
+- Update to .NET Core Runtime 5.0.0 and SDK 5.0.100 commit 9c4e5de
+
+* Fri Dec 04 2020 Omair Majid <omajid@redhat.com> - 5.0.100-1
 - Update to .NET Core Runtime 5.0.0 and SDK 5.0.100
 
 * Thu Dec 03 2020 Omair Majid <omajid@redhat.com> - 5.0.100-0.4.20201202git337413b
