@@ -125,7 +125,7 @@ if [ ! -f "${unmodified_tarball_name}.tar.gz" ]; then
     git submodule update --init --recursive
     clean_dotnet_cache
     # FIXME remove contineuonprebuilterror
-    ./build.sh -p:SkipPrebuiltEnforcement=true -p:ContinueOnPrebuiltBaselineError=true -p:ArchiveDownloadedPackages=true -p:UseSystemLibraries=true
+    ./build.sh -p:SkipPrebuiltEnforcement=true -p:ContinueOnPrebuiltBaselineError=true -p:ArchiveDownloadedPackages=true -p:UseSystemLibraries=true -p:UseSystemLibunwind=false
     ./build-source-tarball.sh "${unmodified_tarball_name}" --skip-build -- -p:ContinueOnPrebuiltBaselineError=true -p:SkipPrebuiltEnforcement=true
 
     if [[ ${build_bootstrap} == true ]]; then

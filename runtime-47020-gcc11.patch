@@ -1,0 +1,55 @@
+From 7123b8344ddc1c883483f13d34abbd22d4170452 Mon Sep 17 00:00:00 2001
+From: Omair Majid <omajid@redhat.com>
+Date: Tue, 5 Jan 2021 18:50:18 -0500
+Subject: [PATCH] Fix build errors using GCC 11 (#46334)
+
+Building runtime with GCC 11 leads to some new errors. The errors are
+consistent with the "Header dependency changes" section documented at
+https://gcc.gnu.org/gcc-11/porting_to.html
+
+The first set of errors looks like this:
+
+    runtime/src/coreclr/pal/src/misc/cgroup.cpp:403:29:
+    error: no member named 'numeric_limits' in namespace 'std'
+              if (temp > std::numeric_limits<size_t>::max())
+                         ~~~~~^
+
+Fix that by including <limits>.
+
+The second set of errors looks like this:
+
+    runtime/src/installer/corehost/cli/test/nativehost/host_context_test.cpp:634:31:
+     error: no member named 'sleep_for' in namespace 'std::this_thread'
+              std::this_thread::sleep_for(std::chrono::milliseconds(100));
+              ~~~~~~~~~~~~~~~~~~^
+
+Fix that by including <thread>.
+---
+ src/coreclr/src/pal/src/misc/cgroup.cpp                          | 1 +
+ src/installer/corehost/cli/test/nativehost/host_context_test.cpp | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/src/coreclr/src/pal/src/misc/cgroup.cpp b/src/coreclr/src/pal/src/misc/cgroup.cpp
+index f3e20012c539..24617359a21b 100644
+--- a/src/coreclr/src/pal/src/misc/cgroup.cpp
++++ b/src/coreclr/src/pal/src/misc/cgroup.cpp
+@@ -14,6 +14,7 @@ Module Name:
+ #include "pal/dbgmsg.h"
+ SET_DEFAULT_DEBUG_CHANNEL(MISC);
+ #include "pal/palinternal.h"
++#include <limits>
+ #include <limits.h>
+ #include <sys/resource.h>
+ #include "pal/virtual.h"
+diff --git a/src/installer/corehost/cli/test/nativehost/host_context_test.cpp b/src/installer/corehost/cli/test/nativehost/host_context_test.cpp
+index cea98db6673a..371ec2d7e2aa 100644
+--- a/src/installer/corehost/cli/test/nativehost/host_context_test.cpp
++++ b/src/installer/corehost/cli/test/nativehost/host_context_test.cpp
+@@ -11,6 +11,7 @@
+ #include <corehost_context_contract.h>
+ #include "hostfxr_exports.h"
+ #include "host_context_test.h"
++#include <thread>
+ #include <utils.h>
+ 
+ namespace

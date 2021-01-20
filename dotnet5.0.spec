@@ -20,11 +20,11 @@
 # until that's done, disable LTO.  This has to happen before setting the flags below.
 %define _lto_cflags %{nil}
 
-%global host_version 5.0.0
-%global runtime_version 5.0.0
-%global aspnetcore_runtime_version 5.0.0
-%global sdk_version 5.0.100
-%global templates_version 5.0.0
+%global host_version 5.0.2
+%global runtime_version 5.0.2
+%global aspnetcore_runtime_version 5.0.2
+%global sdk_version 5.0.102
+%global templates_version %{runtime_version}
 #%%global templates_version %%(echo %%{runtime_version} | awk 'BEGIN { FS="."; OFS="." } {print $1, $2, $3+1 }')
 
 %global host_rpm_version %{host_version}
@@ -63,15 +63,20 @@ URL:            https://github.com/dotnet/
 
 # The source is generated on a Fedora box via:
 # ./build-dotnet-tarball v%%{src_version}-SDK
-Source0:        dotnet-9c4e5de-x64-bootstrap.tar.gz
-Source1:        check-debug-symbols.py
-Source2:        dotnet.sh.in
+Source0:        dotnet-v%{src_version}-SDK-x64-bootstrap.tar.gz
+Source1:        dotnet-v%{src_version}-SDK-arm64-bootstrap.tar.gz
+
+Source10:       check-debug-symbols.py
+Source11:       dotnet.sh.in
 
 Patch1:         source-build-runtime-fixup-linker-order.patch
 
 # https://github.com/dotnet/runtime/pull/42094
 # Fix linker order when linking with --as-needed
 Patch100:       runtime-linker-order.patch
+# https://github.com/dotnet/runtime/pull/47020
+# Fix build with gcc 11
+Patch101:       runtime-47020-gcc11.patch
 
 # Disable telemetry by default; make it opt-in
 Patch500:       sdk-telemetry-optout.patch
@@ -310,7 +315,16 @@ These are not meant for general use.
 
 
 %prep
-%setup -q -n dotnet-9c4e5de-x64-bootstrap
+%if %{without bootstrap}
+%setup -q -n dotnet-v%{src_version}-SDK
+%else
+%ifarch x86_64
+%setup -q -T -b 0 -n dotnet-v%{src_version}-SDK-%{runtime_arch}-bootstrap
+%endif
+%ifarch aarch64
+%setup -q -T -b 1 -n dotnet-v%{src_version}-SDK-%{runtime_arch}-bootstrap
+%endif
+%endif
 
 %if %{without bootstrap}
 # Remove all prebuilts
@@ -339,16 +353,12 @@ sed -i 's|skiptests|skiptests ignorewarnings|' repos/runtime.common.props
 
 pushd src/runtime.*
 %patch100 -p1
+%patch101 -p1
 popd
 
 pushd src/sdk.*
 %patch500 -p1
 popd
-
-%ifnarch x86_64
-mkdir -p artifacts/obj/%{runtime_arch}/Release
-cp artifacts/obj/x64/Release/PackageVersions.props artifacts/obj/%{runtime_arch}/Release/PackageVersions.props
-%endif
 
 cat source-build-info.txt
 
@@ -418,7 +428,7 @@ VERBOSE=1 ./build.sh \
 %endif
 
 
-sed -e 's|[@]LIBDIR[@]|%{_libdir}|g' %{SOURCE2} > dotnet.sh
+sed -e 's|[@]LIBDIR[@]|%{_libdir}|g' %{SOURCE11} > dotnet.sh
 
 
 %install
@@ -473,7 +483,7 @@ install artifacts/%{runtime_arch}/Release/Private.SourceBuilt.Artifacts.*.tar.gz
 # because native binaries are stripped by rpm-build after %%install.
 # So we need to do this check earlier.
 echo "Testing build results for debug symbols..."
-%{SOURCE1} -v %{buildroot}%{_libdir}/dotnet/
+%{SOURCE10} -v %{buildroot}%{_libdir}/dotnet/
 
 
 %check
