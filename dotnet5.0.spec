@@ -92,7 +92,7 @@ BuildRequires:  clang
 BuildRequires:  cmake
 BuildRequires:  coreutils
 %if %{without bootstrap}
-BuildRequires:  dotnet-5.0-build-reference-packages
+BuildRequires:  dotnet5.0-build-reference-packages
 BuildRequires:  dotnet-sdk-5.0
 BuildRequires:  dotnet-sdk-5.0-source-built-artifacts
 %endif
