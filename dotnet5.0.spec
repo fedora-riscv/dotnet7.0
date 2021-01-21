@@ -360,6 +360,13 @@ pushd src/sdk.*
 %patch500 -p1
 popd
 
+%if %{without bootstrap}
+%ifnarch x86_64
+mkdir -p artifacts/obj/%{runtime_arch}/Release
+cp artifacts/obj/x64/Release/PackageVersions.props artifacts/obj/%{runtime_arch}/Release/PackageVersions.props
+%endif
+%endif
+
 cat source-build-info.txt
 
 find -iname 'nuget.config' -exec echo {}: \; -exec cat {} \; -exec echo \;
