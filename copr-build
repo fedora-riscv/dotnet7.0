@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -euo pipefail
+
+set -x
+
+fedpkg --release f32 srpm 2>&1 | tee fedpkg.output
+
+srpm_name=$(grep 'Wrote: ' fedpkg.output | cut -d' ' -f 2)
+
+copr-cli build @dotnet-sig/dotnet-preview "${srpm_name}"

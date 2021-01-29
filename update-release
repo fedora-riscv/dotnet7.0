@@ -1,0 +1,63 @@
+#!/bin/bash
+
+# Usage:
+#     ./update-release sdk-version runtime-version
+
+set -euo pipefail
+IFS=$'\n\t'
+
+print_usage() {
+    echo " Usage:"
+    echo "     ./update-release sdk-version runtime-version"
+}
+
+positional_args=()
+while [[ "$#" -gt 0 ]]; do
+    arg="${1}"
+    case "${arg}" in
+        -h|--help)
+            print_usage
+            exit 0
+            ;;
+        *)
+            positional_args+=("$1")
+            shift
+            ;;
+    esac
+done
+
+spec_file=dotnet5.0.spec
+
+sdk_version=${positional_args[0]:-}
+if [[ -z ${sdk_version} ]]; then
+    echo "error: missing sdk version"
+    exit 1
+fi
+
+runtime_version=${positional_args[1]:-}
+if [[ -z ${runtime_version} ]]; then
+    echo "error: missing runtime version"
+    exit 1
+fi
+
+host_version="$runtime_version"
+
+if [[ ! -f "dotnet-v${sdk_version}-SDK.tar.gz" ]]; then
+    ./build-dotnet-tarball "v${sdk_version}-SDK"
+fi
+
+set -x
+
+sed -i -E "s|^%global host_version [[:digit:]]\.[[:digit:]]\.[[:digit:]]+|%global host_version ${host_version}|" "$spec_file"
+sed -i -E "s|^%global runtime_version [[:digit:]]\.[[:digit:]]\.[[:digit:]]+|%global runtime_version ${runtime_version}|" "$spec_file"
+sed -i -E "s|^%global sdk_version [[:digit:]]\.[[:digit:]]\.[[:digit:]][[:digit:]][[:digit:]]|%global sdk_version ${sdk_version}|" "$spec_file"
+
+comment="Update to .NET Core Runtime ${runtime_version} and SDK ${sdk_version}"
+
+rpmdev-bumpspec --comment="$comment" $spec_file
+
+# Reset release to 1 in 'Release' tag
+sed -i -E 's|^Release:        [[:digit:]]+%|Release:        1%|' $spec_file
+# Reset Release in changelog comment
+# See https://stackoverflow.com/questions/18620153/find-matching-text-and-replace-next-line
+sed -i -E '/^%changelog$/!b;n;s/-[[:digit:]]+$/-1/' $spec_file
