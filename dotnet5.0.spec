@@ -69,6 +69,7 @@ Source1:        dotnet-v%{src_version}-SDK-arm64-bootstrap.tar.gz
 Source10:       check-debug-symbols.py
 Source11:       dotnet.sh.in
 
+# Fix up a patch included in source-build to apply after we apply the linker-order patch first
 Patch1:         source-build-runtime-fixup-linker-order.patch
 
 # https://github.com/dotnet/runtime/pull/42094
