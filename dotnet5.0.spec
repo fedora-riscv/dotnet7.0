@@ -1,4 +1,4 @@
-%bcond_without bootstrap
+%bcond_with bootstrap
 
 # Avoid provides/requires from private libraries
 %global privlibs             libhostfxr
@@ -56,15 +56,14 @@
 
 Name:           dotnet5.0
 Version:        %{sdk_rpm_version}
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        .NET Runtime and SDK
 License:        MIT and ASL 2.0 and BSD and LGPLv2+ and CC-BY and CC0 and MS-PL and EPL-1.0 and GPL+ and GPLv2 and ISC and OFL and zlib
 URL:            https://github.com/dotnet/
 
 # The source is generated on a Fedora box via:
 # ./build-dotnet-tarball v%%{src_version}-SDK
-Source0:        dotnet-v%{src_version}-SDK-x64-bootstrap.tar.gz
-Source1:        dotnet-v%{src_version}-SDK-arm64-bootstrap.tar.gz
+Source0:        dotnet-v%{src_version}-SDK.tar.gz
 
 Source10:       check-debug-symbols.py
 Source11:       dotnet.sh.in
@@ -545,6 +544,9 @@ echo "Testing build results for debug symbols..."
 
 
 %changelog
+* Fri Jan 29 2021 Omair Majid <omajid@redhat.com> - 5.0.102-2
+- Disable bootstrap
+
 * Fri Dec 18 2020 Omair Majid <omajid@redhat.com> - 5.0.100-2
 - Update to .NET Core Runtime 5.0.0 and SDK 5.0.100 commit 9c4e5de
 
