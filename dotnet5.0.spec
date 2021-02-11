@@ -20,10 +20,10 @@
 # until that's done, disable LTO.  This has to happen before setting the flags below.
 %define _lto_cflags %{nil}
 
-%global host_version 5.0.2
-%global runtime_version 5.0.2
-%global aspnetcore_runtime_version 5.0.2
-%global sdk_version 5.0.102
+%global host_version 5.0.3
+%global runtime_version 5.0.3
+%global aspnetcore_runtime_version %{runtime_version}
+%global sdk_version 5.0.103
 %global templates_version %{runtime_version}
 #%%global templates_version %%(echo %%{runtime_version} | awk 'BEGIN { FS="."; OFS="." } {print $1, $2, $3+1 }')
 
@@ -56,7 +56,7 @@
 
 Name:           dotnet5.0
 Version:        %{sdk_rpm_version}
-Release:        2%{?dist}
+Release:        1%{?dist}
 Summary:        .NET Runtime and SDK
 License:        MIT and ASL 2.0 and BSD and LGPLv2+ and CC-BY and CC0 and MS-PL and EPL-1.0 and GPL+ and GPLv2 and ISC and OFL and zlib
 URL:            https://github.com/dotnet/
@@ -544,6 +544,9 @@ echo "Testing build results for debug symbols..."
 
 
 %changelog
+* Thu Feb 11 2021 Omair Majid <omajid@redhat.com> - 5.0.103-1
+- Update to .NET SDK 5.0.103 and Runtime 5.0.3
+
 * Fri Jan 29 2021 Omair Majid <omajid@redhat.com> - 5.0.102-2
 - Disable bootstrap
 

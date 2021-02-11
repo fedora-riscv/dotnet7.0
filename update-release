@@ -52,7 +52,7 @@ sed -i -E "s|^%global host_version [[:digit:]]\.[[:digit:]]\.[[:digit:]]+|%globa
 sed -i -E "s|^%global runtime_version [[:digit:]]\.[[:digit:]]\.[[:digit:]]+|%global runtime_version ${runtime_version}|" "$spec_file"
 sed -i -E "s|^%global sdk_version [[:digit:]]\.[[:digit:]]\.[[:digit:]][[:digit:]][[:digit:]]|%global sdk_version ${sdk_version}|" "$spec_file"
 
-comment="Update to .NET Core Runtime ${runtime_version} and SDK ${sdk_version}"
+comment="Update to .NET SDK ${sdk_version} and Runtime ${runtime_version}"
 
 rpmdev-bumpspec --comment="$comment" $spec_file
 
