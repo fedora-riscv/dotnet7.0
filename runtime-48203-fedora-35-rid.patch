@@ -1,0 +1,119 @@
+From e806448fdf844ca925c461b356b31363e844e902 Mon Sep 17 00:00:00 2001
+From: Omair Majid <omajid@redhat.com>
+Date: Thu, 11 Feb 2021 20:13:18 -0500
+Subject: [PATCH 1/2] Add Fedora 35 RID
+
+Fedora rawhide now uses the fedora.35-x64 RID:
+
+    $ podman run -it registry.fedoraproject.org/fedora:rawhide /bin/bash -c 'cat /etc/os-release'
+    NAME=Fedora
+    VERSION="35 (Container Image Prerelease)"
+    ID=fedora
+    VERSION_ID=35
+    VERSION_CODENAME=""
+    PLATFORM_ID="platform:f35"
+    PRETTY_NAME="Fedora 35 (Container Image Prerelease)"
+    ANSI_COLOR="0;38;2;60;110;180"
+    LOGO=fedora-logo-icon
+    CPE_NAME="cpe:/o:fedoraproject:fedora:35"
+    HOME_URL="https://fedoraproject.org/"
+    DOCUMENTATION_URL="https://docs.fedoraproject.org/en-US/fedora/rawhide/system-administrators-guide/"
+    SUPPORT_URL="https://fedoraproject.org/wiki/Communicating_and_getting_help"
+    BUG_REPORT_URL="https://bugzilla.redhat.com/"
+    REDHAT_BUGZILLA_PRODUCT="Fedora"
+    REDHAT_BUGZILLA_PRODUCT_VERSION=rawhide
+    REDHAT_SUPPORT_PRODUCT="Fedora"
+    REDHAT_SUPPORT_PRODUCT_VERSION=rawhide
+    PRIVACY_POLICY_URL="https://fedoraproject.org/wiki/Legal:PrivacyPolicy"
+    VARIANT="Container Image"
+    VARIANT_ID=container
+---
+ .../runtime.compatibility.json                | 32 ++++++++++++++++++
+ .../Microsoft.NETCore.Platforms/runtime.json  | 17 ++++++++++
+ .../runtimeGroups.props                       |  2 +-
+ 6 files changed, 69 insertions(+), 18 deletions(-)
+
+diff --git a/src/libraries/pkg/Microsoft.NETCore.Platforms/runtime.compatibility.json b/src/libraries/pkg/Microsoft.NETCore.Platforms/runtime.compatibility.json
+index 275929bf1fce..f56d7461e90c 100644
+--- a/src/libraries/pkg/Microsoft.NETCore.Platforms/runtime.compatibility.json
++++ b/src/libraries/pkg/Microsoft.NETCore.Platforms/runtime.compatibility.json
+@@ -2376,6 +2376,38 @@
+     "any",
+     "base"
+   ],
++  "fedora.35": [
++    "fedora.35",
++    "fedora",
++    "linux",
++    "unix",
++    "any",
++    "base"
++  ],
++  "fedora.35-arm64": [
++    "fedora.35-arm64",
++    "fedora.35",
++    "fedora-arm64",
++    "fedora",
++    "linux-arm64",
++    "linux",
++    "unix-arm64",
++    "unix",
++    "any",
++    "base"
++  ],
++  "fedora.35-x64": [
++    "fedora.35-x64",
++    "fedora.35",
++    "fedora-x64",
++    "fedora",
++    "linux-x64",
++    "linux",
++    "unix-x64",
++    "unix",
++    "any",
++    "base"
++  ],
+   "freebsd": [
+     "freebsd",
+     "unix",
+diff --git a/src/libraries/pkg/Microsoft.NETCore.Platforms/runtime.json b/src/libraries/pkg/Microsoft.NETCore.Platforms/runtime.json
+index 5a2631cccd9a..3e8b2e74e85f 100644
+--- a/src/libraries/pkg/Microsoft.NETCore.Platforms/runtime.json
++++ b/src/libraries/pkg/Microsoft.NETCore.Platforms/runtime.json
+@@ -962,6 +962,23 @@
+         "fedora-x64"
+       ]
+     },
++    "fedora.35": {
++      "#import": [
++        "fedora"
++      ]
++    },
++    "fedora.35-arm64": {
++      "#import": [
++        "fedora.35",
++        "fedora-arm64"
++      ]
++    },
++    "fedora.35-x64": {
++      "#import": [
++        "fedora.35",
++        "fedora-x64"
++      ]
++    },
+     "freebsd": {
+       "#import": [
+         "unix"
+diff --git a/src/libraries/pkg/Microsoft.NETCore.Platforms/runtimeGroups.props b/src/libraries/pkg/Microsoft.NETCore.Platforms/runtimeGroups.props
+index 5bd4306409de..e78268c077fd 100644
+--- a/src/libraries/pkg/Microsoft.NETCore.Platforms/runtimeGroups.props
++++ b/src/libraries/pkg/Microsoft.NETCore.Platforms/runtimeGroups.props
+@@ -60,7 +60,7 @@
+     <RuntimeGroup Include="fedora">
+       <Parent>linux</Parent>
+       <Architectures>x64;arm64</Architectures>
+-      <Versions>23;24;25;26;27;28;29;30;31;32;33;34</Versions>
++      <Versions>23;24;25;26;27;28;29;30;31;32;33;34;35</Versions>
+       <TreatVersionsAsCompatible>false</TreatVersionsAsCompatible>
+     </RuntimeGroup>
+ 

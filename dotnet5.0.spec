@@ -56,7 +56,7 @@
 
 Name:           dotnet5.0
 Version:        %{sdk_rpm_version}
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        .NET Runtime and SDK
 License:        MIT and ASL 2.0 and BSD and LGPLv2+ and CC-BY and CC0 and MS-PL and EPL-1.0 and GPL+ and GPLv2 and ISC and OFL and zlib
 URL:            https://github.com/dotnet/
@@ -71,12 +71,18 @@ Source11:       dotnet.sh.in
 # Fix up a patch included in source-build to apply after we apply the linker-order patch first
 Patch1:         source-build-runtime-fixup-linker-order.patch
 
+# FIXME: upstream Fedora 35 RIDs; needed to unblock Fedora 35 for now
+Patch2:         source-build-rids.patch
+
 # https://github.com/dotnet/runtime/pull/42094
 # Fix linker order when linking with --as-needed
 Patch100:       runtime-linker-order.patch
 # https://github.com/dotnet/runtime/pull/47020
 # Fix build with gcc 11
 Patch101:       runtime-47020-gcc11.patch
+# https://github.com/dotnet/runtime/pull/48203
+# Add Fedora 35 RID
+Patch102:       runtime-48203-fedora-35-rid.patch
 
 # Disable telemetry by default; make it opt-in
 Patch500:       sdk-telemetry-optout.patch
@@ -350,10 +356,12 @@ sed -i 's|/usr/share/dotnet|%{_libdir}/dotnet|' src/runtime.*/src/installer/core
 sed -i 's|skiptests|skiptests ignorewarnings|' repos/runtime.common.props
 
 %patch1 -p1
+%patch2 -p1
 
 pushd src/runtime.*
 %patch100 -p1
 %patch101 -p1
+%patch102 -p1
 popd
 
 pushd src/sdk.*
@@ -544,6 +552,9 @@ echo "Testing build results for debug symbols..."
 
 
 %changelog
+* Wed Feb 17 2021 Omair Majid <omajid@redhat.com> - 5.0.103-2
+- Add Fedora 35 RIDs
+
 * Thu Feb 11 2021 Omair Majid <omajid@redhat.com> - 5.0.103-1
 - Update to .NET SDK 5.0.103 and Runtime 5.0.3
 
