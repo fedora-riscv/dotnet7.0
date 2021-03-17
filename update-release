@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # Usage:
-#     ./update-release sdk-version runtime-version
+#     ./update-release sdk-version runtime-version [tarball-name]
 
 set -euo pipefail
 IFS=$'\n\t'
 
 print_usage() {
     echo " Usage:"
-    echo "     ./update-release sdk-version runtime-version"
+    echo "     ./update-release sdk-version runtime-version [tarball-name]"
 }
 
 positional_args=()
@@ -40,10 +40,20 @@ if [[ -z ${runtime_version} ]]; then
     exit 1
 fi
 
+tag=v${sdk_version}-SDK
+
+user_provided_tarball_name=${positional_args[2]:-}
+if [[ -n "${user_provided_tarball_name}" ]]; then
+    # we know the format build-dotnet-tarball expects for the original tarball:
+    # dotnet-${tag}-original.tar.gz
+    ./rename-tarball "$user_provided_tarball_name" dotnet-${tag}-original.tar.gz
+fi
+
+
 host_version="$runtime_version"
 
-if [[ ! -f "dotnet-v${sdk_version}-SDK.tar.gz" ]]; then
-    ./build-dotnet-tarball "v${sdk_version}-SDK"
+if [[ ! -f "dotnet-${tag}.tar.gz" ]]; then
+    ./build-dotnet-tarball "${tag}"
 fi
 
 set -x

@@ -158,18 +158,6 @@ rm -r src/NuGet.Client.*/test/EndToEnd
 rm -r src/runtime.*/src/mono/
 rm -r src/Humanizer.*/samples/
 
-# FIXME delete when upstream has a new release with this file fixed
-if ! grep "RSA Data Security" src/runtime.*/src/libraries/System.Security.Cryptography.Algorithms/src/Internal/Cryptography/SHAHashProvider.Browser.cs; then
-    echo "SHAHashProvider.Browser.cs has been fixed upstream. Please fix build-dotnet-tarball"
-    exit 1
-fi
-# Delete the bad source
-rm src/runtime.*/src/libraries/System.Security.Cryptography.Algorithms/src/Internal/Cryptography/SHAHashProvider.Browser.cs
-# Delete the patch that modifies the bad source
-rm patches/runtime/0001-Use-substitute-SHA-1-implementation-in-wasm-44982.patch
-# Add pre-patched copy
-cp ../SHAHashProvider.Browser.cs src/runtime.*/src/libraries/System.Security.Cryptography.Algorithms/src/Internal/Cryptography/
-
 popd
 
 tar czf "${tarball_name}.tar.gz" "${tarball_name}"
