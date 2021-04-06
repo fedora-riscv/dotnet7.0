@@ -56,7 +56,7 @@
 
 Name:           dotnet5.0
 Version:        %{sdk_rpm_version}
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        .NET Runtime and SDK
 License:        MIT and ASL 2.0 and BSD and LGPLv2+ and CC-BY and CC0 and MS-PL and EPL-1.0 and GPL+ and GPLv2 and ISC and OFL and zlib
 URL:            https://github.com/dotnet/
@@ -475,7 +475,7 @@ install -dm 0755 %{buildroot}%{_sysconfdir}/dotnet
 install install_location %{buildroot}%{_sysconfdir}/dotnet/
 
 install -dm 0755 %{buildroot}%{_libdir}/dotnet/source-built-artifacts
-install artifacts/%{runtime_arch}/Release/Private.SourceBuilt.Artifacts.*.tar.gz %{buildroot}/%{_libdir}/dotnet/source-built-artifacts/
+install -m 0644 artifacts/%{runtime_arch}/Release/Private.SourceBuilt.Artifacts.*.tar.gz %{buildroot}/%{_libdir}/dotnet/source-built-artifacts/
 
 # Check debug symbols in all elf objects. This is not in %%check
 # because native binaries are stripped by rpm-build after %%install.
@@ -500,8 +500,8 @@ echo "Testing build results for debug symbols..."
 %license %{_libdir}/dotnet/LICENSE.txt
 %license %{_libdir}/dotnet/ThirdPartyNotices.txt
 %doc %{_mandir}/man1/dotnet*.1.gz
-%{_sysconfdir}/profile.d/dotnet.sh
-%{_sysconfdir}/dotnet
+%config(noreplace) %{_sysconfdir}/profile.d/dotnet.sh
+%config(noreplace) %{_sysconfdir}/dotnet
 %dir %{_datadir}/bash-completion
 %dir %{_datadir}/bash-completion/completions
 %{_datadir}/bash-completion/completions/dotnet
@@ -535,6 +535,12 @@ echo "Testing build results for debug symbols..."
 
 
 %changelog
+* Tue Apr 06 2021 Omair Majid <omajid@redhat.com> - 5.0.104-2
+- Mark files under /etc/ as config(noreplace)
+- Add an rpm-inspect configuration file
+- Add an rpmlintrc file
+- Enable gating for release branches and ELN too
+
 * Tue Mar 16 2021 Omair Majid <omajid@redhat.com> - 5.0.104-1
 - Update to .NET SDK 5.0.104 and Runtime 5.0.4
 - Drop unneeded/upstreamed patches
