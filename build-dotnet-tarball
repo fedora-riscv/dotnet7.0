@@ -154,7 +154,7 @@ fi
 # not-very-useful artifacts to reduce tarball size
 rm -r src/aspnetcore.*/src/SignalR/clients/java/signalr/gradle*
 find src/aspnetcore.*/src -type d -name samples -print0 | xargs -0 rm -r
-rm -r src/NuGet.Client.*/test/EndToEnd
+rm -r src/nuget.client.*/test/EndToEnd
 rm -r src/runtime.*/src/mono/
 rm -r src/Humanizer.*/samples/
 

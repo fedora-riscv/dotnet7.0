@@ -15,4 +15,4 @@ index de1ebb9e6..6bbf479de 100644
 +
              DebugHelper.HandleDebugSwitch(ref args);
  
-             new MulticoreJitActivator().TryActivateMulticoreJit();
+             // Capture the current timestamp to calculate the host overhead.

@@ -20,10 +20,10 @@
 # until that's done, disable LTO.  This has to happen before setting the flags below.
 %define _lto_cflags %{nil}
 
-%global host_version 5.0.4
-%global runtime_version 5.0.4
+%global host_version 5.0.5
+%global runtime_version 5.0.5
 %global aspnetcore_runtime_version %{runtime_version}
-%global sdk_version 5.0.104
+%global sdk_version 5.0.202
 %global templates_version %{runtime_version}
 #%%global templates_version %%(echo %%{runtime_version} | awk 'BEGIN { FS="."; OFS="." } {print $1, $2, $3+1 }')
 
@@ -56,7 +56,7 @@
 
 Name:           dotnet5.0
 Version:        %{sdk_rpm_version}
-Release:        2%{?dist}
+Release:        1%{?dist}
 Summary:        .NET Runtime and SDK
 License:        MIT and ASL 2.0 and BSD and LGPLv2+ and CC-BY and CC0 and MS-PL and EPL-1.0 and GPL+ and GPLv2 and ISC and OFL and zlib
 URL:            https://github.com/dotnet/
@@ -67,10 +67,6 @@ Source0:        dotnet-v%{src_version}-SDK.tar.gz
 
 Source10:       check-debug-symbols.py
 Source11:       dotnet.sh.in
-
-# https://github.com/dotnet/runtime/pull/48203
-# Add Fedora 35 RID
-Patch100:       runtime-48203-fedora-35-rid.patch
 
 # Disable telemetry by default; make it opt-in
 Patch500:       sdk-telemetry-optout.patch
@@ -343,10 +339,6 @@ sed -i 's|/usr/share/dotnet|%{_libdir}/dotnet|' src/runtime.*/src/installer/core
 # Disable warnings
 sed -i 's|skiptests|skiptests ignorewarnings|' repos/runtime.common.props
 
-pushd src/runtime.*
-%patch100 -p1
-popd
-
 pushd src/sdk.*
 %patch500 -p1
 popd
@@ -535,6 +527,9 @@ echo "Testing build results for debug symbols..."
 
 
 %changelog
+* Wed Apr 14 2021 Omair Majid <omajid@redhat.com> - 5.0.202-1
+- Update to .NET SDK 5.0.202 and Runtime 5.0.5
+
 * Tue Apr 06 2021 Omair Majid <omajid@redhat.com> - 5.0.104-2
 - Mark files under /etc/ as config(noreplace)
 - Add an rpm-inspect configuration file

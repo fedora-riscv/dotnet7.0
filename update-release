@@ -1,23 +1,36 @@
 #!/bin/bash
 
 # Usage:
-#     ./update-release sdk-version runtime-version [tarball-name]
+#     ./update-release sdk-version runtime-version [--bug bug-id] [--tarball tarball-name]
 
 set -euo pipefail
 IFS=$'\n\t'
 
 print_usage() {
     echo " Usage:"
-    echo "     ./update-release sdk-version runtime-version [tarball-name]"
+    echo "     ./update-release sdk-version runtime-version [--bug bug-id] [--tarball tarball-name]"
 }
 
+user_provided_tarball_name=""
+
 positional_args=()
+bug_ids=()
 while [[ "$#" -gt 0 ]]; do
-    arg="${1}"
+    arg="$1"
     case "${arg}" in
+        --bug)
+            bug_ids+=("$2")
+            shift;
+            shift;
+            ;;
         -h|--help)
             print_usage
             exit 0
+            ;;
+        --tarball)
+            user_provided_tarball_name="$2"
+            shift;
+            shift;
             ;;
         *)
             positional_args+=("$1")
@@ -26,7 +39,8 @@ while [[ "$#" -gt 0 ]]; do
     esac
 done
 
-spec_file=dotnet5.0.spec
+spec_files=( ./*.spec )
+spec_file="${spec_files[0]}"
 
 sdk_version=${positional_args[0]:-}
 if [[ -z ${sdk_version} ]]; then
@@ -40,17 +54,21 @@ if [[ -z ${runtime_version} ]]; then
     exit 1
 fi
 
+host_version="$runtime_version"
+
 tag=v${sdk_version}-SDK
 
-user_provided_tarball_name=${positional_args[2]:-}
-if [[ -n "${user_provided_tarball_name}" ]]; then
-    # we know the format build-dotnet-tarball expects for the original tarball:
-    # dotnet-${tag}-original.tar.gz
-    ./rename-tarball "$user_provided_tarball_name" dotnet-${tag}-original.tar.gz
+if [[ -f "dotnet-${tag}-original.tar.gz" ]]; then
+    echo "dotnet-${tag}-original.tar.gz alredy exists, not rebuilding tarball"
+else
+    if [[ -n "${user_provided_tarball_name}" ]]; then
+        ./rename-tarball "$user_provided_tarball_name" "dotnet-${tag}-original.tar.gz"
+    elif [[ -f "dotnet-${sdk_version}-SDK.tar.gz" ]]; then
+        ./rename-tarball "dotnet-${sdk_version}-SDK.tar.gz" "dotnet-${tag}-original.tar.gz"
+    elif [[ -f "dotnet-${runtime_version}.tar.gz" ]]; then
+        ./rename-tarball "dotnet-${runtime_version}.tar.gz" "dotnet-${tag}-original.tar.gz"
+    fi
 fi
-
-
-host_version="$runtime_version"
 
 if [[ ! -f "dotnet-${tag}.tar.gz" ]]; then
     ./build-dotnet-tarball "${tag}"
@@ -63,11 +81,15 @@ sed -i -E "s|^%global runtime_version [[:digit:]]\.[[:digit:]]\.[[:digit:]]+|%gl
 sed -i -E "s|^%global sdk_version [[:digit:]]\.[[:digit:]]\.[[:digit:]][[:digit:]][[:digit:]]|%global sdk_version ${sdk_version}|" "$spec_file"
 
 comment="Update to .NET SDK ${sdk_version} and Runtime ${runtime_version}"
+for bug_id in "${bug_ids[@]}"; do
+    comment="$comment
+- Resolves: RHBZ#$bug_id"
+done
 
-rpmdev-bumpspec --comment="$comment" $spec_file
+rpmdev-bumpspec --comment="$comment" "$spec_file"
 
 # Reset release to 1 in 'Release' tag
-sed -i -E 's|^Release:        [[:digit:]]+%|Release:        1%|' $spec_file
+sed -i -E 's|^Release:        [[:digit:]]+%|Release:        1%|' "$spec_file"
 # Reset Release in changelog comment
 # See https://stackoverflow.com/questions/18620153/find-matching-text-and-replace-next-line
-sed -i -E '/^%changelog$/!b;n;s/-[[:digit:]]+$/-1/' $spec_file
+sed -i -E '/^%changelog$/!b;n;s/-[[:digit:]]+$/-1/' "$spec_file"
