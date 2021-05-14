@@ -20,10 +20,10 @@
 # until that's done, disable LTO.  This has to happen before setting the flags below.
 %define _lto_cflags %{nil}
 
-%global host_version 5.0.5
-%global runtime_version 5.0.5
+%global host_version 5.0.6
+%global runtime_version 5.0.6
 %global aspnetcore_runtime_version %{runtime_version}
-%global sdk_version 5.0.202
+%global sdk_version 5.0.203
 %global templates_version %{runtime_version}
 #%%global templates_version %%(echo %%{runtime_version} | awk 'BEGIN { FS="."; OFS="." } {print $1, $2, $3+1 }')
 
@@ -329,8 +329,8 @@ rm -rf packages/source-built
 
 %if %{without bootstrap}
 mkdir -p packages/archive
-ln -s %{_libdir}/dotnet/source-built-artifacts/*.tar.gz packages/archive/
-ln -s %{_libdir}/dotnet/reference-packages/*.tar.gz packages/archive
+ln -s %{_libdir}/dotnet/source-built-artifacts/Private.SourceBuilt.Artifacts.*.tar.gz packages/archive/
+ln -s %{_libdir}/dotnet/reference-packages/Private.SourceBuild.ReferencePackages*.tar.gz packages/archive/
 %endif
 
 # Fix bad hardcoded path in build
@@ -527,6 +527,9 @@ echo "Testing build results for debug symbols..."
 
 
 %changelog
+* Wed May 12 2021 Omair Majid <omajid@redhat.com> - 5.0.203-1
+- Update to .NET SDK 5.0.203 and Runtime 5.0.6
+
 * Wed Apr 14 2021 Omair Majid <omajid@redhat.com> - 5.0.202-1
 - Update to .NET SDK 5.0.202 and Runtime 5.0.5
 
