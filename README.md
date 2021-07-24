@@ -1,6 +1,6 @@
-# dotnet5.0
+# dotnet6.0
 
-This is the .NET 5.0 package for Fedora.
+This is the pre-release .NET 6.0 package for Fedora.
 
 This package is maintained by the Fedora DotNet SIG (Special Interest
 Group). You can find out more about the DotNet SIG at:
@@ -20,6 +20,10 @@ with one exception. It installs dotnet to `/usr/lib64/dotnet` (aka
 `%{_libdir}`).
 
 # Contributing
+
+The steps below are for the final package. Please only contribute to this
+pre-release version this if you know what you are doing. Original instructions
+follow.
 
 ## General Changes
 
