@@ -79,6 +79,7 @@ while [[ "$#" -gt 0 ]]; do
     arg="${1}"
     case "${arg}" in
         --bootstrap)
+            check_bootstrap_environment
             build_bootstrap=true
             shift
             ;;
@@ -119,22 +120,26 @@ fi
 if [ ! -f "${unmodified_tarball_name}.tar.gz" ]; then
     temp_dir=$(mktemp -d -p "$(pwd)")
     pushd "${temp_dir}"
-    git clone https://github.com/dotnet/source-build
-    pushd source-build
+    git clone https://github.com/dotnet/installer
+    pushd installer
     git checkout "${tag}"
     git submodule update --init --recursive
     clean_dotnet_cache
     # FIXME remove contineuonprebuilterror
-    ./build.sh -p:SkipPrebuiltEnforcement=true -p:ContinueOnPrebuiltBaselineError=true -p:ArchiveDownloadedPackages=true -p:UseSystemLibraries=true -p:UseSystemLibunwind=false
-    ./build-source-tarball.sh "${unmodified_tarball_name}" --skip-build -- -p:ContinueOnPrebuiltBaselineError=true -p:SkipPrebuiltEnforcement=true
+    # ./build.sh -p:SkipPrebuiltEnforcement=true -p:ContinueOnPrebuiltBaselineError=true -p:ArchiveDownloadedPackages=true -p:UseSystemLibraries=true -p:UseSystemLibunwind=false
+    # ./build-source-tarball.sh "${unmodified_tarball_name}" --skip-build -- -p:ContinueOnPrebuiltBaselineError=true -p:SkipPrebuiltEnforcement=true
+    mkdir -p "../${unmodified_tarball_name}"
+    ./build.sh /p:ArcadeBuildTarball=true /p:TarballDir="$(readlink -f ../"${unmodified_tarball_name}")"
 
     if [[ ${build_bootstrap} == true ]]; then
-        cp -a artifacts/"${arch}"/Release/Private.SourceBuilt.Artifacts.*.tar.gz "${unmodified_tarball_name}"/packages/archive/Private.SourceBuilt.Artifacts.*.tar.gz
+        # FIXME
+        # cp -a artifacts/"${arch}"/Release/Private.SourceBuilt.Artifacts.*.tar.gz "${unmodified_tarball_name}"/packages/archive/Private.SourceBuilt.Artifacts.*.tar.gz
+        echo
     fi
     popd
     popd
 
-    tar czf "${unmodified_tarball_name}.tar.gz" -C "${temp_dir}/source-build" "${unmodified_tarball_name}"
+    tar czf "${unmodified_tarball_name}.tar.gz" -C "${temp_dir}" "${unmodified_tarball_name}"
 
     rm -rf "${temp_dir}"
 fi
@@ -148,15 +153,16 @@ pushd "${tarball_name}"
 if [[ ${build_bootstrap} != true ]]; then
     find . -type f -iname '*.tar.gz' -delete
     rm -rf .dotnet
+else
+    ./prep.sh
 fi
 
 # Remove files with funny licenses, crypto implementations and other
 # not-very-useful artifacts to reduce tarball size
 rm -r src/aspnetcore.*/src/SignalR/clients/java/signalr/gradle*
 find src/aspnetcore.*/src -type d -name samples -print0 | xargs -0 rm -r
-rm -r src/nuget.client.*/test/EndToEnd
-rm -r src/runtime.*/src/mono/
-rm -r src/Humanizer.*/samples/
+rm -r src/nuget-client.*/test/EndToEnd
+rm -r src/source-build.*/src/humanizer/samples/
 
 popd
 

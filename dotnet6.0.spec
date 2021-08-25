@@ -1,6 +1,3 @@
-#FIXME HACK
-%define debug_package %{nil}
-
 %bcond_without bootstrap
 
 # Avoid provides/requires from private libraries
@@ -23,11 +20,11 @@
 # until that's done, disable LTO.  This has to happen before setting the flags below.
 %define _lto_cflags %{nil}
 
-%global host_version 6.0.0-preview6
-%global runtime_version 6.0.0-preview6
-%global aspnetcore_runtime_version %{runtime_version}
-%global sdk_version 6.0.0-preview6
-%global templates_version %{runtime_version}
+%global host_version 6.0.0-preview.7.21356.2
+%global runtime_version 6.0.0-preview.7.21356.2
+%global aspnetcore_runtime_version 6.0.0-preview.6.21355.2/
+%global sdk_version 6.0.100
+%global templates_version 6.0.0-rc.2.21420.26
 #%%global templates_version %%(echo %%{runtime_version} | awk 'BEGIN { FS="."; OFS="." } {print $1, $2, $3+1 }')
 
 %global host_rpm_version 6.0.0
@@ -36,7 +33,8 @@
 %global sdk_rpm_version 6.0.0
 
 # upstream can update releases without revving the SDK version so these don't always match
-%global src_version %{sdk_version}
+#%%global upstream_tag v%%{sdk_version}-SDK
+%global upstream_tag f3ea71b28f18719441d1e6995f134e22559131d6
 
 %if 0%{?fedora} || 0%{?rhel} < 8
 %global use_bundled_libunwind 0
@@ -59,14 +57,14 @@
 
 Name:           dotnet6.0
 Version:        %{sdk_rpm_version}
-Release:        0.1.preview6%{?dist}
+Release:        0.2.preview6%{?dist}
 Summary:        .NET Runtime and SDK
 License:        MIT and ASL 2.0 and BSD and LGPLv2+ and CC-BY and CC0 and MS-PL and EPL-1.0 and GPL+ and GPLv2 and ISC and OFL and zlib
 URL:            https://github.com/dotnet/
 
 # The source is generated on a Fedora box via:
-# ./build-dotnet-tarball v%%{src_version}-SDK
-Source0:        dotnet-6.0-preview6.tar.gz
+# ./build-dotnet-tarball --bootstrap $commit-id
+Source0:        dotnet-%{upstream_tag}-x64-bootstrap.tar.gz
 
 Source10:       check-debug-symbols.py
 Source11:       dotnet.sh.in
@@ -307,13 +305,13 @@ These are not meant for general use.
 
 %prep
 %if %{without bootstrap}
-%setup -q -n dotnet-v%{src_version}-SDK
+%setup -q -n dotnet-%{upstream_tag}
 %else
 %ifarch x86_64
-%setup -q -T -b 0 -n tarball-6.0-preview6
+%setup -q -T -b 0 -n dotnet-%{upstream_tag}-%{runtime_arch}-bootstrap
 %endif
 %ifarch aarch64
-%setup -q -T -b 1 -n dotnet-v%{src_version}-SDK-%{runtime_arch}-bootstrap
+%setup -q -T -b 0 -n dotnet-%{upstream_tag}-%{runtime_arch}-bootstrap
 %endif
 %endif
 
@@ -422,27 +420,11 @@ sed -e 's|[@]LIBDIR[@]|%{_libdir}|g' %{SOURCE11} > dotnet.sh
 
 %install
 install -dm 0755 %{buildroot}%{_libdir}/dotnet
-#tar xf artifacts/%%{runtime_arch}/Release/dotnet-sdk-%%{sdk_version}-%%{runtime_id}.tar.gz -C %%{buildroot}%%{_libdir}/dotnet/
-
-# FIXME this is a GIANT HACK to create a fake .NET installation on disk
-cat <<EOF > %{buildroot}%{_libdir}/dotnet/dotnet
-#!/usr/bin/bash
-
-echo "I am a fake dotnet command"
-EOF
-mkdir -p %{buildroot}%{_libdir}/dotnet/host/fxr/%{host_version}/
-mkdir -p %{buildroot}%{_libdir}/dotnet/packs/Microsoft.AspNetCore.App.Ref/%{aspnetcore_runtime_version}/
-mkdir -p %{buildroot}%{_libdir}/dotnet/packs/Microsoft.NETCore.App.Host.%{runtime_id}/%{runtime_version}/
-mkdir -p %{buildroot}%{_libdir}/dotnet/packs/Microsoft.NETCore.App.Ref/%{runtime_version}/
-mkdir -p %{buildroot}%{_libdir}/dotnet/packs/NETStandard.Library.Ref/%{runtime_version}/
-mkdir -p %{buildroot}%{_libdir}/dotnet/sdk/%{sdk_version}/
-mkdir -p %{buildroot}%{_libdir}/dotnet/shared/Microsoft.NETCore.App/%{runtime_version}/
-mkdir -p %{buildroot}%{_libdir}/dotnet/shared/Microsoft.AspNetCore.App/%{aspnetcore_runtime_version}/
-mkdir -p %{buildroot}%{_libdir}/dotnet/templates/%{templates_version}
+tar xf artifacts/%{runtime_arch}/Release/dotnet-sdk-%{sdk_version}-%{runtime_id}.tar.gz -C %{buildroot}%{_libdir}/dotnet/
 
 # Install managed symbols
-# tar xf artifacts/%%{runtime_arch}/Release/runtime/dotnet-runtime-symbols-%%{runtime_version}-%%{runtime_id}.tar.gz \
-#     -C %%{buildroot}/%%{_libdir}/dotnet/shared/Microsoft.NETCore.App/%%{runtime_version}/
+tar xf artifacts/%{runtime_arch}/Release/runtime/dotnet-runtime-symbols-%{runtime_version}-%{runtime_id}.tar.gz \
+    -C %{buildroot}/%{_libdir}/dotnet/shared/Microsoft.NETCore.App/%{runtime_version}/
 
 # Fix executable permissions on files
 find %{buildroot}%{_libdir}/dotnet/ -type f -name '*.a' -exec chmod -x {} \;
@@ -452,6 +434,7 @@ find %{buildroot}%{_libdir}/dotnet/ -type f -name '*.pdb' -exec chmod -x {} \;
 find %{buildroot}%{_libdir}/dotnet/ -type f -name '*.props' -exec chmod -x {} \;
 find %{buildroot}%{_libdir}/dotnet/ -type f -name '*.pubxml' -exec chmod -x {} \;
 find %{buildroot}%{_libdir}/dotnet/ -type f -name '*.targets' -exec chmod -x {} \;
+find %{buildroot}%{_libdir}/dotnet/ -type f -name '*.txt' -exec chmod -x {} \;
 find %{buildroot}%{_libdir}/dotnet/ -type f -name '*.xml' -exec chmod -x {} \;
 
 install -dm 0755 %{buildroot}%{_sysconfdir}/profile.d/
@@ -477,17 +460,19 @@ install install_location %{buildroot}%{_sysconfdir}/dotnet/
 
 install -dm 0755 %{buildroot}%{_libdir}/dotnet/source-built-artifacts
 #install -m 0644 artifacts/%%{runtime_arch}/Release/Private.SourceBuilt.Artifacts.*.tar.gz %%{buildroot}/%%{_libdir}/dotnet/source-built-artifacts/
+install -m 0644 /home/omajid/rh-git/dotnet6.0/already-built-artifacts.tar.gz %{buildroot}/%{_libdir}/dotnet/source-built-artifacts/
+
 
 # Check debug symbols in all elf objects. This is not in %%check
 # because native binaries are stripped by rpm-build after %%install.
 # So we need to do this check earlier.
-# FIXME echo "Testing build results for debug symbols..."
-#%%{SOURCE10} -v %%{buildroot}%%{_libdir}/dotnet/
+echo "Testing build results for debug symbols..."
+%{SOURCE10} -v %{buildroot}%{_libdir}/dotnet/
 
 
 
 %check
-#%%{buildroot}%%{_libdir}/dotnet/dotnet --info
+%{buildroot}%{_libdir}/dotnet/dotnet --info
 
 
 %files -n dotnet
@@ -499,9 +484,8 @@ install -dm 0755 %{buildroot}%{_libdir}/dotnet/source-built-artifacts
 %dir %{_libdir}/dotnet/host
 %dir %{_libdir}/dotnet/host/fxr
 %{_bindir}/dotnet
-# FIXME
-#%%license %%{_libdir}/dotnet/LICENSE.txt
-#%%license %%{_libdir}/dotnet/ThirdPartyNotices.txt
+%license %{_libdir}/dotnet/LICENSE.txt
+%license %{_libdir}/dotnet/ThirdPartyNotices.txt
 %doc %{_mandir}/man1/dotnet*.1.gz
 %config(noreplace) %{_sysconfdir}/profile.d/dotnet.sh
 %config(noreplace) %{_sysconfdir}/dotnet
@@ -530,6 +514,8 @@ install -dm 0755 %{buildroot}%{_libdir}/dotnet/source-built-artifacts
 %files -n dotnet-sdk-6.0
 %dir %{_libdir}/dotnet/sdk
 %{_libdir}/dotnet/sdk/%{sdk_version}
+%dir %{_libdir}/dotnet/sdk-manifests
+%{_libdir}/dotnet/sdk-manifests/%{sdk_version}
 %dir %{_libdir}/dotnet/packs
 
 %files -n dotnet-sdk-6.0-source-built-artifacts
@@ -538,6 +524,9 @@ install -dm 0755 %{buildroot}%{_libdir}/dotnet/source-built-artifacts
 
 
 %changelog
+* Wed Aug 25 2021 Omair Majid <omajid@redhat.com> - 6.0.0-0.2.preview6
+- Updated to build the latest source-build preview
+
 * Fri Jul 23 2021 Omair Majid <omajid@redhat.com> - 6.0.0-0.1.preview6
 - Initial package for .NET 6
 
