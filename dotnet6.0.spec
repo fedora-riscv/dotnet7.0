@@ -20,11 +20,11 @@
 # until that's done, disable LTO.  This has to happen before setting the flags below.
 %define _lto_cflags %{nil}
 
-%global host_version 6.0.0-preview.7.21356.2
-%global runtime_version 6.0.0-preview.7.21356.2
-%global aspnetcore_runtime_version 6.0.0-preview.6.21355.2/
-%global sdk_version 6.0.100
-%global templates_version 6.0.0-rc.2.21420.26
+%global host_version 6.0.0-rc.2.21470.23
+%global runtime_version 6.0.0-rc.2.21470.23
+%global aspnetcore_runtime_version 6.0.0-rc.2.21470.37
+%global sdk_version 6.0.100-rc.2.21474.1
+%global templates_version 6.0.0-rc.2.21470.37
 #%%global templates_version %%(echo %%{runtime_version} | awk 'BEGIN { FS="."; OFS="." } {print $1, $2, $3+1 }')
 
 %global host_rpm_version 6.0.0
@@ -34,7 +34,7 @@
 
 # upstream can update releases without revving the SDK version so these don't always match
 #%%global upstream_tag v%%{sdk_version}-SDK
-%global upstream_tag f3ea71b28f18719441d1e6995f134e22559131d6
+%global upstream_tag 28be3e9a006d90d8c6e87d4353b77882829df718
 
 %if 0%{?fedora} || 0%{?rhel} < 8
 %global use_bundled_libunwind 0
@@ -57,27 +57,38 @@
 
 Name:           dotnet6.0
 Version:        %{sdk_rpm_version}
-Release:        0.2.preview6%{?dist}
+Release:        0.3.%{upstream_tag}%{?dist}
 Summary:        .NET Runtime and SDK
 License:        MIT and ASL 2.0 and BSD and LGPLv2+ and CC-BY and CC0 and MS-PL and EPL-1.0 and GPL+ and GPLv2 and ISC and OFL and zlib
 URL:            https://github.com/dotnet/
 
 # The source is generated on a Fedora box via:
-# ./build-dotnet-tarball --bootstrap $commit-id
+# ./build-dotnet-tarball --bootstrap %%{upstream_tag}
 Source0:        dotnet-%{upstream_tag}-x64-bootstrap.tar.gz
 
 Source10:       check-debug-symbols.py
 Source11:       dotnet.sh.in
 
+# https://github.com/NuGet/NuGet.Client/pull/4254
+Patch200:       nuget-client-use-work-tree-with-git-apply.patch
+# https://github.com/dotnet/command-line-api/pull/1401
+Patch300:       command-line-api-use-work-tree-with-git-apply.patch
+# https://github.com/microsoft/vstest/pull/3046
+Patch400:       vstest-use-work-tree-with-git-apply.patch
+
+Patch500:       fsharp-use-work-tree-with-git-apply.patch
+
+Patch600:       xliff-tasks-use-work-tree-with-git-apply.patch
+
 # Disable telemetry by default; make it opt-in
-Patch500:       sdk-telemetry-optout.patch
+Patch1500:       sdk-telemetry-optout.patch
 
-%if 0%{?fedora} > 32 || 0%{?rhel} > 8
-ExclusiveArch:  aarch64 x86_64
-%else
+
+#%%if 0%%{?fedora} > 32 || 0%%{?rhel} > 8
+#ExclusiveArch:  aarch64 x86_64
+#%%else
 ExclusiveArch:  x86_64
-%endif
-
+#%%endif
 
 BuildRequires:  clang
 BuildRequires:  cmake
@@ -338,8 +349,31 @@ sed -i 's|/usr/share/dotnet|%{_libdir}/dotnet|' src/runtime.*/src/native/corehos
 # Disable warnings
 # sed -i 's|skiptests|skiptests ignorewarnings|' repos/runtime.common.props
 
-pushd src/sdk.*
+pushd src/runtime.*
+popd
+
+pushd src/nuget-client.*
+%patch200 -p1
+popd
+
+pushd src/command-line-api.*
+%patch300 -p1
+popd
+
+pushd src/vstest.*
+%patch400 -p1
+popd
+
+pushd src/fsharp.*
 %patch500 -p1
+popd
+
+pushd src/xliff-tasks.*
+%patch600 -p1
+popd
+
+pushd src/sdk.*
+%patch1500 -p1
 popd
 
 %if %{without bootstrap}
@@ -347,16 +381,6 @@ popd
 mkdir -p artifacts/obj/%{runtime_arch}/Release
 cp artifacts/obj/x64/Release/PackageVersions.props artifacts/obj/%{runtime_arch}/Release/PackageVersions.props
 %endif
-%endif
-
-%if %{use_bundled_libunwind}
-    sed -i -E \
-    's/DCLR_CMAKE_USE_SYSTEM_LIBUNWIND=(TRUE|true|FALSE|false)/DCLR_CMAKE_USE_SYSTEM_LIBUNWIND=FALSE/' \
-    src/runtime.*/eng/SourceBuild.props
-%else
-    sed -i -E \
-      's/DCLR_CMAKE_USE_SYSTEM_LIBUNWIND=(TRUE|true|FALSE|false)/DCLR_CMAKE_USE_SYSTEM_LIBUNWIND=TRUE/' \
-      src/runtime.*/eng/SourceBuild.props
 %endif
 
 
@@ -400,17 +424,13 @@ unset CFLAGS
 unset CXXFLAGS
 unset LDFLAGS
 
-#%%if %%{without bootstrap}
-#  --with-ref-packages %%{_libdir}/dotnet/reference-packages/ \
-#  --with-packages %%{_libdir}/dotnet/source-built-artifacts/*.tar.gz \
-#  --with-sdk %%{_libdir}/dotnet \
-#%%endif
-
 VERBOSE=1 ./build.sh \
 %if %{without bootstrap}
     --with-sdk previously-built-dotnet \
 %endif
     -- \
+
+echo \
     /v:n \
     /p:SkipPortableRuntimeBuild=true \
     /p:LogVerbosity=n \
@@ -432,9 +452,13 @@ tar xf artifacts/%{runtime_arch}/Release/dotnet-sdk-%{sdk_version}-%{runtime_id}
 #    -C %%{buildroot}/%%{_libdir}/dotnet/shared/Microsoft.NETCore.App/%%{runtime_version}/
 
 # Fix executable permissions on files
+find %{buildroot}%{_libdir}/dotnet/ -type f -name 'apphost' -exec chmod +x {} \;
+find %{buildroot}%{_libdir}/dotnet/ -type f -name 'singlefilehost' -exec chmod +x {} \;
+find %{buildroot}%{_libdir}/dotnet/ -type f -name 'lib*so' -exec chmod +x {} \;
 find %{buildroot}%{_libdir}/dotnet/ -type f -name '*.a' -exec chmod -x {} \;
 find %{buildroot}%{_libdir}/dotnet/ -type f -name '*.dll' -exec chmod -x {} \;
 find %{buildroot}%{_libdir}/dotnet/ -type f -name '*.h' -exec chmod 0644 {} \;
+find %{buildroot}%{_libdir}/dotnet/ -type f -name '*.json' -exec chmod -x {} \;
 find %{buildroot}%{_libdir}/dotnet/ -type f -name '*.pdb' -exec chmod -x {} \;
 find %{buildroot}%{_libdir}/dotnet/ -type f -name '*.props' -exec chmod -x {} \;
 find %{buildroot}%{_libdir}/dotnet/ -type f -name '*.pubxml' -exec chmod -x {} \;
@@ -459,9 +483,11 @@ ln -s ../../%{_libdir}/dotnet/dotnet %{buildroot}%{_bindir}/
 install -dm 0755 %{buildroot}%{_mandir}/man1/
 find -iname 'dotnet*.1' -type f -exec cp {} %{buildroot}%{_mandir}/man1/ \;
 
-echo "%{_libdir}/dotnet" >> install_location
 install -dm 0755 %{buildroot}%{_sysconfdir}/dotnet
+echo "%{_libdir}/dotnet" >> install_location
 install install_location %{buildroot}%{_sysconfdir}/dotnet/
+echo "%{_libdir}/dotnet" >> install_location_%{runtime_arch}
+install install_location_%{runtime_arch} %{buildroot}%{_sysconfdir}/dotnet/
 
 install -dm 0755 %{buildroot}%{_libdir}/dotnet/source-built-artifacts
 install -m 0644 artifacts/%{runtime_arch}/Release/Private.SourceBuilt.Artifacts.*.tar.gz %{buildroot}/%{_libdir}/dotnet/source-built-artifacts/
@@ -520,7 +546,9 @@ install -m 0644 artifacts/%{runtime_arch}/Release/Private.SourceBuilt.Artifacts.
 %dir %{_libdir}/dotnet/sdk
 %{_libdir}/dotnet/sdk/%{sdk_version}
 %dir %{_libdir}/dotnet/sdk-manifests
-%{_libdir}/dotnet/sdk-manifests/%{sdk_version}
+# FIXME hardcoded version?
+%{_libdir}/dotnet/sdk-manifests/6.0.100
+%{_libdir}/dotnet/metadata
 %dir %{_libdir}/dotnet/packs
 
 %files -n dotnet-sdk-6.0-source-built-artifacts
@@ -529,6 +557,9 @@ install -m 0644 artifacts/%{runtime_arch}/Release/Private.SourceBuilt.Artifacts.
 
 
 %changelog
+* Sun Sep 26 2021 Omair Majid <omajid@redhat.com> - 6.0.0-0.3.28be3e9a006d90d8c6e87d4353b77882829df718
+- Update to work-in-progress RC2 release
+
 * Wed Aug 25 2021 Omair Majid <omajid@redhat.com> - 6.0.0-0.2.preview6
 - Updated to build the latest source-build preview
 
