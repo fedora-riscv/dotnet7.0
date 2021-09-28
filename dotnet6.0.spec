@@ -197,7 +197,8 @@ Requires:       dotnet-hostfxr-6.0%{?_isa} >= %{host_rpm_version}-%{release}
 Requires:       libicu%{?_isa}
 
 %if %{use_bundled_libunwind}
-Provides: bundled(libunwind) = 1.3
+# See runtime.*/src/coreclr/pal/src/libunwind/libunwind-version.txt
+Provides: bundled(libunwind) = 1.5.rc1.28.g9165d2a1
 %endif
 
 %description -n dotnet-runtime-6.0
@@ -383,6 +384,14 @@ cp artifacts/obj/x64/Release/PackageVersions.props artifacts/obj/%{runtime_arch}
 %endif
 %endif
 
+# Disable package validation which breaks our build, even though we
+# are injecting "blessed" nuget packages produced by Microsoft.
+# There's no need to run validation in RPM packages anyway.
+sed -i -E 's|( /p:BuildDebPackage=false)|\1 /p:EnablePackageValidation=false|' src/runtime.*/eng/SourceBuild.props
+
+%if ! %{use_bundled_libunwind}
+sed -i -E 's|( /p:BuildDebPackage=false)|\1 --cmakeargs -DCLR_CMAKE_USE_SYSTEM_LIBUNWIND=TRUE|' src/runtime.*/eng/SourceBuild.props
+%endif
 
 %build
 cat /etc/os-release
