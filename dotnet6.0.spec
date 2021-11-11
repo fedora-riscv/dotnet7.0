@@ -20,21 +20,21 @@
 # until that's done, disable LTO.  This has to happen before setting the flags below.
 %define _lto_cflags %{nil}
 
-%global host_version 6.0.0-rc.2.21470.23
-%global runtime_version 6.0.0-rc.2.21470.23
-%global aspnetcore_runtime_version 6.0.0-rc.2.21470.37
-%global sdk_version 6.0.100-rc.2.21474.1
-%global templates_version 6.0.0-rc.2.21470.37
+%global host_version 6.0.0
+%global runtime_version 6.0.0
+%global aspnetcore_runtime_version 6.0.0
+%global sdk_version 6.0.100
+%global templates_version 6.0.0
 #%%global templates_version %%(echo %%{runtime_version} | awk 'BEGIN { FS="."; OFS="." } {print $1, $2, $3+1 }')
 
-%global host_rpm_version 6.0.0
-%global runtime_rpm_version 6.0.0
-%global aspnetcore_runtime_rpm_version %{runtime_rpm_version}
-%global sdk_rpm_version 6.0.0
+%global host_rpm_version %{host_version}
+%global runtime_rpm_version %{runtime_version}
+%global aspnetcore_runtime_rpm_version %{aspnetcore_runtime_version}
+%global sdk_rpm_version %{sdk_version}
 
 # upstream can update releases without revving the SDK version so these don't always match
 #%%global upstream_tag v%%{sdk_version}-SDK
-%global upstream_tag 28be3e9a006d90d8c6e87d4353b77882829df718
+%global upstream_tag 9e8b04bbff820c93c142f99a507a46b976f5c14c
 
 %if 0%{?fedora} || 0%{?rhel} < 8
 %global use_bundled_libunwind 0
@@ -42,7 +42,7 @@
 %global use_bundled_libunwind 1
 %endif
 
-%ifarch aarch64
+%ifarch aarch64 s390x
 %global use_bundled_libunwind 1
 %endif
 
@@ -52,49 +52,94 @@
 %ifarch aarch64
 %global runtime_arch arm64
 %endif
+%ifarch s390x
+%global runtime_arch s390x
+%endif
 
 %{!?runtime_id:%global runtime_id %(. /etc/os-release ; echo "${ID}.${VERSION_ID%%.*}")-%{runtime_arch}}
 
 Name:           dotnet6.0
 Version:        %{sdk_rpm_version}
-Release:        0.3.%{upstream_tag}%{?dist}
+Release:        1%{?dist}
 Summary:        .NET Runtime and SDK
 License:        MIT and ASL 2.0 and BSD and LGPLv2+ and CC-BY and CC0 and MS-PL and EPL-1.0 and GPL+ and GPLv2 and ISC and OFL and zlib
 URL:            https://github.com/dotnet/
 
+%if %{with bootstrap}
 # The source is generated on a Fedora box via:
 # ./build-dotnet-tarball --bootstrap %%{upstream_tag}
-Source0:        dotnet-%{upstream_tag}-x64-bootstrap.tar.gz
+Source0:        dotnet-%{upstream_tag}-x64-bootstrap.tar.xz
+# Generated via ./build-arm64-bootstrap-tarball
+Source1:        dotnet-arm64-prebuilts-2021-10-29.tar.gz
+# Generated manually, same pattern as the arm64 tarball
+Source2:        dotnet-s390x-prebuilts-2021-10-29.tar.gz
+%else
+# The source is generated on a Fedora box via:
+# ./build-dotnet-tarball %%{upstream_tag}
+Source0:        dotnet-%{upstream_tag}.tar.gz
+%endif
 
 Source10:       check-debug-symbols.py
 Source11:       dotnet.sh.in
 
-# https://github.com/NuGet/NuGet.Client/pull/4254
-Patch200:       nuget-client-use-work-tree-with-git-apply.patch
+# Fix using lld on Fedora
+Patch100:       runtime-arm64-lld-fix.patch
+# Mono still has a dependency on (now unbuildable) ILStrip which was removed from CoreCLR: https://github.com/dotnet/runtime/pull/60315
+Patch101:       runtime-mono-remove-ilstrip.patch
+
 # https://github.com/dotnet/command-line-api/pull/1401
 Patch300:       command-line-api-use-work-tree-with-git-apply.patch
+
 # https://github.com/microsoft/vstest/pull/3046
 Patch400:       vstest-use-work-tree-with-git-apply.patch
 
+# This is the suggestion from https://github.com/dotnet/source-build/pull/2450, applied
 Patch500:       fsharp-use-work-tree-with-git-apply.patch
+# Disable apphost, needed for s390x
+Patch501:       fsharp-no-apphost.patch
 
+# This is the suggestion from https://github.com/dotnet/source-build/pull/2450, applied
 Patch600:       xliff-tasks-use-work-tree-with-git-apply.patch
 
+# Disable apphost, needed for s390x
+Patch700:       arcade-no-apphost.patch
+
+# Named mutex fix for mono, needed for s390x. https://github.com/dotnet/roslyn/pull/57003
+Patch800:       roslyn-57003-mono-named-mutex.patch
+# Disable apphost, needed for s390x
+Patch801:       roslyn-no-apphost.patch
+
+# Disable apphost, needed for s390x
+Patch900:       roslyn-analyzers-no-apphost.patch
+
+# Fix mono-specific runtime crashes running msbuild. CoreCLR does not
+# load types that are not actually used/invoked at runtime, while mono
+# does. System.Configuration and System.Security are missing in
+# source-build builds, which breaks msbuild.
+Patch1000:      msbuild-no-systemsecurity.patch
+Patch1001:      msbuild-no-systemconfiguration.patch
+
 # Disable telemetry by default; make it opt-in
-Patch1500:       sdk-telemetry-optout.patch
+Patch1500:      sdk-telemetry-optout.patch
+# https://github.com/dotnet/sdk/pull/22373
+Patch1501:      sdk-22373-portablerid.patch
+
+# https://github.com/dotnet/installer/pull/12516
+Patch1600:      installer-12516-portablerid.patch
+# https://github.com/dotnet/installer/pull/12622
+Patch1601:      installer-12622-fix-runtime-symbols.patch
 
 
-#%%if 0%%{?fedora} > 32 || 0%%{?rhel} > 8
-#ExclusiveArch:  aarch64 x86_64
-#%%else
+%if 0%{?fedora} || 0%{?rhel} >= 8
+ExclusiveArch:  aarch64 x86_64 s390x
+%else
 ExclusiveArch:  x86_64
-#%%endif
+%endif
 
 BuildRequires:  clang
 BuildRequires:  cmake
 BuildRequires:  coreutils
 %if %{without bootstrap}
-BuildRequires:  dotnet-sdk-6.0-build-reference-packages
 BuildRequires:  dotnet-sdk-6.0
 BuildRequires:  dotnet-sdk-6.0-source-built-artifacts
 %endif
@@ -105,18 +150,20 @@ BuildRequires:  glibc-langpack-en
 %endif
 BuildRequires:  hostname
 BuildRequires:  krb5-devel
-BuildRequires:  libcurl-devel
 BuildRequires:  libicu-devel
 %if ! %{use_bundled_libunwind}
 BuildRequires:  libunwind-devel
 %endif
-BuildRequires:  lldb-devel
+%ifarch aarch64
+BuildRequires:  lld
+%endif
 BuildRequires:  llvm
 BuildRequires:  lttng-ust-devel
 BuildRequires:  make
 BuildRequires:  openssl-devel
 BuildRequires:  python3
 BuildRequires:  tar
+BuildRequires:  util-linux
 BuildRequires:  zlib-devel
 
 %description
@@ -319,12 +366,25 @@ These are not meant for general use.
 %if %{without bootstrap}
 %setup -q -n dotnet-%{upstream_tag}
 %else
-%ifarch x86_64
-%setup -q -T -b 0 -n dotnet-%{upstream_tag}-%{runtime_arch}-bootstrap
-%endif
+
+%setup -q -T -b 0 -n dotnet-%{upstream_tag}-x64-bootstrap
+
+%ifnarch x86_64
+
+rm -rf .dotnet
 %ifarch aarch64
-%setup -q -T -b 0 -n dotnet-%{upstream_tag}-%{runtime_arch}-bootstrap
+tar -x --strip-components=1 -f %{SOURCE1} -C packages/prebuilt
 %endif
+%ifarch s390x
+tar -x --strip-components=1 -f %{SOURCE2} -C packages/prebuilt
+%endif
+mkdir -p .dotnet
+tar xf packages/prebuilt/dotnet-sdk*.tar.gz -C .dotnet/
+rm packages/prebuilt/dotnet-sdk*.tar.gz
+boot_sdk_version=$(ls -1 .dotnet/sdk/)
+sed -i -E 's|"dotnet": "[^"]+"|"dotnet" : "'$boot_sdk_version'"|' global.json
+%endif
+
 %endif
 
 %if %{without bootstrap}
@@ -336,9 +396,7 @@ find -iname '*.nupkg' -type f -delete
 find -iname '*.zip' -type f -delete
 rm -rf .dotnet/
 rm -rf packages/source-built
-%endif
 
-%if %{without bootstrap}
 mkdir -p packages/archive
 ln -s %{_libdir}/dotnet/source-built-artifacts/Private.SourceBuilt.Artifacts.*.tar.gz packages/archive/
 ln -s %{_libdir}/dotnet/reference-packages/Private.SourceBuild.ReferencePackages*.tar.gz packages/archive/
@@ -351,10 +409,8 @@ sed -i 's|/usr/share/dotnet|%{_libdir}/dotnet|' src/runtime.*/src/native/corehos
 # sed -i 's|skiptests|skiptests ignorewarnings|' repos/runtime.common.props
 
 pushd src/runtime.*
-popd
-
-pushd src/nuget-client.*
-%patch200 -p1
+%patch100 -p1
+%patch101 -p1
 popd
 
 pushd src/command-line-api.*
@@ -367,26 +423,53 @@ popd
 
 pushd src/fsharp.*
 %patch500 -p1
+%patch501 -p1
 popd
 
 pushd src/xliff-tasks.*
 %patch600 -p1
 popd
 
-pushd src/sdk.*
-%patch1500 -p1
+pushd src/arcade.*
+%patch700 -p1
 popd
 
-%if %{without bootstrap}
-%ifnarch x86_64
-mkdir -p artifacts/obj/%{runtime_arch}/Release
-cp artifacts/obj/x64/Release/PackageVersions.props artifacts/obj/%{runtime_arch}/Release/PackageVersions.props
-%endif
+pushd src/roslyn.*
+%patch800 -p3
+%patch801 -p1
+popd
+
+pushd src/roslyn-analyzers.*
+%patch900 -p1
+popd
+
+pushd src/msbuild.*
+
+# These are mono-specific fixes. Mono is only used on s390x. Restrict
+# patch to s390x to avoid potential risk in other architectures.
+%ifarch s390x
+%patch1000 -p1
+%patch1001 -p1
 %endif
 
-# Disable package validation which breaks our build, even though we
-# are injecting "blessed" nuget packages produced by Microsoft.
+popd
+
+pushd src/sdk.*
+%patch1500 -p1
+%patch1501 -p1
+popd
+
+pushd src/installer.*
+%patch1600 -p1
+popd
+
+# We need to apply the patch to the already-built tarball's
+# repos/runtime.common.targets, not to the installer's "source" copy.
+%patch1601 -p5
+
+# Disable package validation which breaks our build.
 # There's no need to run validation in RPM packages anyway.
+# See https://github.com/dotnet/runtime/pull/60881
 sed -i -E 's|( /p:BuildDebPackage=false)|\1 /p:EnablePackageValidation=false|' src/runtime.*/eng/SourceBuild.props
 
 %if ! %{use_bundled_libunwind}
@@ -455,10 +538,13 @@ install -dm 0755 %{buildroot}%{_libdir}/dotnet
 ls artifacts/%{runtime_arch}/Release
 tar xf artifacts/%{runtime_arch}/Release/dotnet-sdk-%{sdk_version}-%{runtime_id}.tar.gz -C %{buildroot}%{_libdir}/dotnet/
 
-# FIXME: no managed symbols in 6.0?
+# See https://github.com/dotnet/source-build/issues/2579
+find %{buildroot}%{_libdir}/dotnet/ -type f -name 'testhost.x86' -delete
+find %{buildroot}%{_libdir}/dotnet/ -type f -name 'vstest.console' -delete
+
 # Install managed symbols
-#tar xf artifacts/%%{runtime_arch}/Release/runtime/dotnet-runtime-symbols-%%{runtime_version}-%%{runtime_id}.tar.gz \
-#    -C %%{buildroot}/%%{_libdir}/dotnet/shared/Microsoft.NETCore.App/%%{runtime_version}/
+tar xf artifacts/%{runtime_arch}/Release/runtime/dotnet-runtime-symbols-%{runtime_id}-%{runtime_version}.tar.gz \
+    -C %{buildroot}/%{_libdir}/dotnet/shared/Microsoft.NETCore.App/%{runtime_version}/
 
 # Fix executable permissions on files
 find %{buildroot}%{_libdir}/dotnet/ -type f -name 'apphost' -exec chmod +x {} \;
@@ -505,9 +591,8 @@ install -m 0644 artifacts/%{runtime_arch}/Release/Private.SourceBuilt.Artifacts.
 # Check debug symbols in all elf objects. This is not in %%check
 # because native binaries are stripped by rpm-build after %%install.
 # So we need to do this check earlier.
-# FIXME
-#echo "Testing build results for debug symbols..."
-#%%{SOURCE10} -v %%{buildroot}%%{_libdir}/dotnet/
+echo "Testing build results for debug symbols..."
+%{SOURCE10} -v %{buildroot}%{_libdir}/dotnet/
 
 
 
@@ -566,6 +651,24 @@ install -m 0644 artifacts/%{runtime_arch}/Release/Private.SourceBuilt.Artifacts.
 
 
 %changelog
+* Wed Nov 10 2021 Omair Majid <omajid@redhat.com> - 6.0.100-1
+- Update to .NET 6
+
+* Fri Oct 22 2021 Omair Majid <omajid@redhat.com> - 6.0.0-0.7.rc2
+- Update to .NET 6 RC2
+
+* Fri Oct 08 2021 Omair Majid <omajid@redhat.com> - 6.0.0-0.6.28be3e9a006d90d8c6e87d4353b77882829df718
+- Enable building on arm64
+- Related: RHBZ#1986017
+
+* Sun Oct 03 2021 Omair Majid <omajid@redhat.com> - 6.0.0-0.5.28be3e9a006d90d8c6e87d4353b77882829df718
+- Enable building on s390x
+- Related: RHBZ#1986017
+
+* Sun Oct 03 2021 Omair Majid <omajid@redhat.com> - 6.0.0-0.4.28be3e9a006d90d8c6e87d4353b77882829df718
+- Clean up tarball and add initial support for s390x
+- Related: RHBZ#1986017
+
 * Sun Sep 26 2021 Omair Majid <omajid@redhat.com> - 6.0.0-0.3.28be3e9a006d90d8c6e87d4353b77882829df718
 - Update to work-in-progress RC2 release
 
