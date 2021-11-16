@@ -86,6 +86,8 @@ Source11:       dotnet.sh.in
 Patch100:       runtime-arm64-lld-fix.patch
 # Mono still has a dependency on (now unbuildable) ILStrip which was removed from CoreCLR: https://github.com/dotnet/runtime/pull/60315
 Patch101:       runtime-mono-remove-ilstrip.patch
+# https://github.com/dotnet/runtime/pull/61442
+Patch102:       runtime-61442-disable-werror.patch
 
 # https://github.com/dotnet/command-line-api/pull/1401
 Patch300:       command-line-api-use-work-tree-with-git-apply.patch
@@ -411,6 +413,7 @@ sed -i 's|/usr/share/dotnet|%{_libdir}/dotnet|' src/runtime.*/src/native/corehos
 pushd src/runtime.*
 %patch100 -p1
 %patch101 -p1
+%patch102 -p1
 popd
 
 pushd src/command-line-api.*

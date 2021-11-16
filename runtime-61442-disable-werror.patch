@@ -1,0 +1,41 @@
+From f41c06ba040adf1930156340c5b03d9864d8a1d4 Mon Sep 17 00:00:00 2001
+From: Omair Majid <omajid@redhat.com>
+Date: Wed, 10 Nov 2021 17:54:45 -0500
+Subject: [PATCH] The 6.0 branch is no longer pre-release
+
+This has limited affects, but it should have been set to false since 6.0
+is now stable/released.
+
+The one difference it makes is that -Werror is disabled when building
+native code.
+---
+ Directory.Build.props              | 2 +-
+ eng/native/configureplatform.cmake | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/Directory.Build.props b/Directory.Build.props
+index f19ea9208c2c..5cb87bb7c257 100644
+--- a/Directory.Build.props
++++ b/Directory.Build.props
+@@ -255,7 +255,7 @@
+     <PackageReleaseNotes>https://go.microsoft.com/fwlink/?LinkID=799421</PackageReleaseNotes>
+     <!-- Indicates this is not an officially supported release. Release branches should set this to false. -->
+     <!-- Keep it in sync with PRERELEASE in eng/native/configureplatform.cmake -->
+-    <IsPrerelease>true</IsPrerelease>
++    <IsPrerelease>false</IsPrerelease>
+     <IsPrivateAssembly>$(MSBuildProjectName.Contains('Private'))</IsPrivateAssembly>
+     <!-- Private packages should not be stable -->
+     <SuppressFinalPackageVersion Condition="'$(SuppressFinalPackageVersion)' == '' and $(IsPrivateAssembly)">true</SuppressFinalPackageVersion>
+diff --git a/eng/native/configureplatform.cmake b/eng/native/configureplatform.cmake
+index 519431772004..af1c88bce5b6 100644
+--- a/eng/native/configureplatform.cmake
++++ b/eng/native/configureplatform.cmake
+@@ -2,7 +2,7 @@ include(${CMAKE_CURRENT_LIST_DIR}/functions.cmake)
+ 
+ # If set, indicates that this is not an officially supported release
+ # Keep in sync with IsPrerelease in Directory.Build.props
+-set(PRERELEASE 1)
++set(PRERELEASE 0)
+ 
+ #----------------------------------------
+ # Detect and set platform variable names
