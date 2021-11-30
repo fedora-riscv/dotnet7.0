@@ -88,6 +88,8 @@ Patch100:       runtime-arm64-lld-fix.patch
 Patch101:       runtime-mono-remove-ilstrip.patch
 # https://github.com/dotnet/runtime/pull/61442
 Patch102:       runtime-61442-disable-werror.patch
+# https://github.com/dotnet/runtime/pull/62170
+Patch103:       runtime-62170-clang13.patch
 
 # https://github.com/dotnet/command-line-api/pull/1401
 Patch300:       command-line-api-use-work-tree-with-git-apply.patch
@@ -414,6 +416,7 @@ pushd src/runtime.*
 %patch100 -p1
 %patch101 -p1
 %patch102 -p1
+%patch103 -p1
 popd
 
 pushd src/command-line-api.*
