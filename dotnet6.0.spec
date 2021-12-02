@@ -605,7 +605,7 @@ echo "Testing build results for debug symbols..."
 
 
 %check
-%if 0%{fedora} > 35
+%if 0%{?fedora} > 35
 # lttng in Fedora > 35 is incompatible with .NET
 export COMPlus_LTTng=0
 %endif
