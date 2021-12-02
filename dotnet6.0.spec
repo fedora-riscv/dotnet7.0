@@ -409,9 +409,6 @@ ln -s %{_libdir}/dotnet/reference-packages/Private.SourceBuild.ReferencePackages
 # Fix bad hardcoded path in build
 sed -i 's|/usr/share/dotnet|%{_libdir}/dotnet|' src/runtime.*/src/native/corehost/hostmisc/pal.unix.cpp
 
-# Disable warnings
-# sed -i 's|skiptests|skiptests ignorewarnings|' repos/runtime.common.props
-
 pushd src/runtime.*
 %patch100 -p1
 %patch101 -p1
@@ -522,6 +519,11 @@ unset CFLAGS
 unset CXXFLAGS
 unset LDFLAGS
 
+# Disable tracing, which is incompatible with certain versions of
+# lttng See https://github.com/dotnet/runtime/issues/57784. The
+# suggested compile-time change doesn't work, unfrotunately.
+export COMPlus_LTTng=0
+
 VERBOSE=1 ./build.sh \
 %if %{without bootstrap}
     --with-sdk previously-built-dotnet \
@@ -603,6 +605,11 @@ echo "Testing build results for debug symbols..."
 
 
 %check
+%if 0%{fedora} > 35
+# lttng in Fedora > 35 is incompatible with .NET
+export COMPlus_LTTng=0
+%endif
+
 %{buildroot}%{_libdir}/dotnet/dotnet --info
 
 
