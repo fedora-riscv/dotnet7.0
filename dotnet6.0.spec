@@ -22,9 +22,9 @@
 
 %global host_version 6.0.0
 %global runtime_version 6.0.0
-%global aspnetcore_runtime_version 6.0.0
+%global aspnetcore_runtime_version %{runtime_version}
 %global sdk_version 6.0.100
-%global templates_version 6.0.0
+%global templates_version %{runtime_version}
 #%%global templates_version %%(echo %%{runtime_version} | awk 'BEGIN { FS="."; OFS="." } {print $1, $2, $3+1 }')
 
 %global host_rpm_version %{host_version}
@@ -664,7 +664,7 @@ export COMPlus_LTTng=0
 
 
 %changelog
-* Wed Nov 10 2021 Omair Majid <omajid@redhat.com> - 6.0.100-1
+* Sun Dec 19 2021 Omair Majid <omajid@redhat.com> - 6.0.100-1
 - Update to .NET 6
 
 * Fri Oct 22 2021 Omair Majid <omajid@redhat.com> - 6.0.0-0.7.rc2
