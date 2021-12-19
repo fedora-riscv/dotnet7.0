@@ -1,0 +1,35 @@
+---
+- hosts: localhost
+  roles:
+  - role: standard-test-basic
+    tags:
+    - classic
+    - container
+    - atomic
+    repositories:
+    - repo: "https://github.com/redhat-developer/dotnet-regular-tests.git"
+      dest: "dotnet-regular-tests"
+      version: main
+    tests:
+      - download_test_runner:
+          dir: ./
+          run: wget --no-verbose https://github.com/redhat-developer/dotnet-bunny/releases/latest/download/turkey-$(uname -m) -O turkey && chmod +x ./turkey
+      - print_test_runner_version:
+          dir: ./
+          run: ./turkey --version
+      - regular:
+          dir: ./
+          run: ./turkey -l={{ remote_artifacts }} dotnet-regular-tests
+    required_packages:
+    - babeltrace
+    - bash-completion
+    - binutils
+    - expect
+    - jq
+    - lldb
+    - lttng-tools
+    - npm
+    - python3
+    - strace
+    - wget
+    - which
