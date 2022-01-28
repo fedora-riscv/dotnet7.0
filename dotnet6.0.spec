@@ -20,10 +20,10 @@
 # until that's done, disable LTO.  This has to happen before setting the flags below.
 %define _lto_cflags %{nil}
 
-%global host_version 6.0.0
-%global runtime_version 6.0.0
+%global host_version 6.0.1
+%global runtime_version 6.0.1
 %global aspnetcore_runtime_version %{runtime_version}
-%global sdk_version 6.0.100
+%global sdk_version 6.0.101
 %global templates_version %{runtime_version}
 #%%global templates_version %%(echo %%{runtime_version} | awk 'BEGIN { FS="."; OFS="." } {print $1, $2, $3+1 }')
 
@@ -33,8 +33,7 @@
 %global sdk_rpm_version %{sdk_version}
 
 # upstream can update releases without revving the SDK version so these don't always match
-#%%global upstream_tag v%%{sdk_version}-SDK
-%global upstream_tag 9e8b04bbff820c93c142f99a507a46b976f5c14c
+%global upstream_tag v%{sdk_version}
 
 %if 0%{?fedora} || 0%{?rhel} < 8
 %global use_bundled_libunwind 0
@@ -86,10 +85,10 @@ Source11:       dotnet.sh.in
 Patch100:       runtime-arm64-lld-fix.patch
 # Mono still has a dependency on (now unbuildable) ILStrip which was removed from CoreCLR: https://github.com/dotnet/runtime/pull/60315
 Patch101:       runtime-mono-remove-ilstrip.patch
-# https://github.com/dotnet/runtime/pull/61442
-Patch102:       runtime-61442-disable-werror.patch
 # https://github.com/dotnet/runtime/pull/62170
-Patch103:       runtime-62170-clang13.patch
+Patch102:       runtime-62170-clang13.patch
+# Extracted from https://github.com/dotnet/installer/pull/13009
+Patch103:       runtime-63653-build-all-packages.patch
 
 # https://github.com/dotnet/command-line-api/pull/1401
 Patch300:       command-line-api-use-work-tree-with-git-apply.patch
@@ -123,15 +122,20 @@ Patch900:       roslyn-analyzers-no-apphost.patch
 Patch1000:      msbuild-no-systemsecurity.patch
 Patch1001:      msbuild-no-systemconfiguration.patch
 
+# Extracted from https://github.com/dotnet/installer/pull/13009
+Patch1100:      aspnetcore-39471-build-all-packages.patch
+
 # Disable telemetry by default; make it opt-in
 Patch1500:      sdk-telemetry-optout.patch
 # https://github.com/dotnet/sdk/pull/22373
 Patch1501:      sdk-22373-portablerid.patch
+# https://github.com/dotnet/sdk/pull/21557
+Patch1502:      sdk-21557-man-pages.patch
 
 # https://github.com/dotnet/installer/pull/12516
 Patch1600:      installer-12516-portablerid.patch
-# https://github.com/dotnet/installer/pull/12622
-Patch1601:      installer-12622-fix-runtime-symbols.patch
+# https://github.com/dotnet/installer/pull/12736
+Patch1601:      installer-12736-no-sudo.patch
 
 
 %if 0%{?fedora} || 0%{?rhel} >= 8
@@ -457,18 +461,20 @@ pushd src/msbuild.*
 
 popd
 
+pushd src/aspnetcore.*
+%patch1100 -p1
+popd
+
 pushd src/sdk.*
 %patch1500 -p1
 %patch1501 -p1
+%patch1502 -p1
 popd
 
 pushd src/installer.*
 %patch1600 -p1
+%patch1601 -p1
 popd
-
-# We need to apply the patch to the already-built tarball's
-# repos/runtime.common.targets, not to the installer's "source" copy.
-%patch1601 -p5
 
 # Disable package validation which breaks our build.
 # There's no need to run validation in RPM packages anyway.
@@ -485,6 +491,7 @@ cat /etc/os-release
 %if %{without bootstrap}
 # We need to create a copy because we will mutate this
 cp -a %{_libdir}/dotnet previously-built-dotnet
+find previously-built-dotnet
 %endif
 
 %if 0%{?fedora} > 32 || 0%{?rhel} > 8
@@ -550,9 +557,11 @@ tar xf artifacts/%{runtime_arch}/Release/dotnet-sdk-%{sdk_version}-%{runtime_id}
 find %{buildroot}%{_libdir}/dotnet/ -type f -name 'testhost.x86' -delete
 find %{buildroot}%{_libdir}/dotnet/ -type f -name 'vstest.console' -delete
 
-# Install managed symbols
-tar xf artifacts/%{runtime_arch}/Release/runtime/dotnet-runtime-symbols-%{runtime_id}-%{runtime_version}.tar.gz \
-    -C %{buildroot}/%{_libdir}/dotnet/shared/Microsoft.NETCore.App/%{runtime_version}/
+# Install managed symbols: disabled because they don't contain sources
+# but point to the paths the sources would have been at in the build
+# servers. The end user experience is pretty bad atm.
+# tar xf artifacts/%{runtime_arch}/Release/runtime/dotnet-runtime-symbols-%{runtime_id}-%{runtime_version}.tar.gz \
+#    -C %{buildroot}/%{_libdir}/dotnet/shared/Microsoft.NETCore.App/%{runtime_version}/
 
 # Fix executable permissions on files
 find %{buildroot}%{_libdir}/dotnet/ -type f -name 'apphost' -exec chmod +x {} \;
@@ -664,6 +673,9 @@ export COMPlus_LTTng=0
 
 
 %changelog
+* Fri Jan 28 2022 Omair Majid <omajid@redhat.com> - 6.0.101-3
+- Update to .NET SDK 6.0.101 and Runtime 6.0.1
+
 * Thu Jan 20 2022 Fedora Release Engineering <releng@fedoraproject.org> - 6.0.100-3
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_36_Mass_Rebuild
 

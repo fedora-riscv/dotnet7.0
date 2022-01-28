@@ -56,7 +56,7 @@ fi
 
 host_version="$runtime_version"
 
-tag=v${sdk_version}-SDK
+tag=v${sdk_version}
 
 if [[ -f "dotnet-${tag}-original.tar.gz" ]]; then
     echo "dotnet-${tag}-original.tar.gz alredy exists, not rebuilding tarball"
