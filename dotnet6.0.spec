@@ -20,10 +20,10 @@
 # until that's done, disable LTO.  This has to happen before setting the flags below.
 %define _lto_cflags %{nil}
 
-%global host_version 6.0.1
-%global runtime_version 6.0.1
+%global host_version 6.0.2
+%global runtime_version 6.0.2
 %global aspnetcore_runtime_version %{runtime_version}
-%global sdk_version 6.0.101
+%global sdk_version 6.0.102
 %global templates_version %{runtime_version}
 #%%global templates_version %%(echo %%{runtime_version} | awk 'BEGIN { FS="."; OFS="." } {print $1, $2, $3+1 }')
 
@@ -59,7 +59,7 @@
 
 Name:           dotnet6.0
 Version:        %{sdk_rpm_version}
-Release:        3%{?dist}
+Release:        1%{?dist}
 Summary:        .NET Runtime and SDK
 License:        MIT and ASL 2.0 and BSD and LGPLv2+ and CC-BY and CC0 and MS-PL and EPL-1.0 and GPL+ and GPLv2 and ISC and OFL and zlib
 URL:            https://github.com/dotnet/
@@ -85,10 +85,7 @@ Source11:       dotnet.sh.in
 Patch100:       runtime-arm64-lld-fix.patch
 # Mono still has a dependency on (now unbuildable) ILStrip which was removed from CoreCLR: https://github.com/dotnet/runtime/pull/60315
 Patch101:       runtime-mono-remove-ilstrip.patch
-# https://github.com/dotnet/runtime/pull/62170
-Patch102:       runtime-62170-clang13.patch
-# Extracted from https://github.com/dotnet/installer/pull/13009
-Patch103:       runtime-63653-build-all-packages.patch
+Patch102:       runtime-fedora-37-rid.patch
 
 # https://github.com/dotnet/command-line-api/pull/1401
 Patch300:       command-line-api-use-work-tree-with-git-apply.patch
@@ -122,20 +119,13 @@ Patch900:       roslyn-analyzers-no-apphost.patch
 Patch1000:      msbuild-no-systemsecurity.patch
 Patch1001:      msbuild-no-systemconfiguration.patch
 
-# Extracted from https://github.com/dotnet/installer/pull/13009
-Patch1100:      aspnetcore-39471-build-all-packages.patch
-
 # Disable telemetry by default; make it opt-in
 Patch1500:      sdk-telemetry-optout.patch
 # https://github.com/dotnet/sdk/pull/22373
 Patch1501:      sdk-22373-portablerid.patch
-# https://github.com/dotnet/sdk/pull/21557
-Patch1502:      sdk-21557-man-pages.patch
 
 # https://github.com/dotnet/installer/pull/12516
 Patch1600:      installer-12516-portablerid.patch
-# https://github.com/dotnet/installer/pull/12736
-Patch1601:      installer-12736-no-sudo.patch
 
 
 %if 0%{?fedora} || 0%{?rhel} >= 8
@@ -417,7 +407,6 @@ pushd src/runtime.*
 %patch100 -p1
 %patch101 -p1
 %patch102 -p1
-%patch103 -p1
 popd
 
 pushd src/command-line-api.*
@@ -462,18 +451,16 @@ pushd src/msbuild.*
 popd
 
 pushd src/aspnetcore.*
-%patch1100 -p1
+
 popd
 
 pushd src/sdk.*
 %patch1500 -p1
 %patch1501 -p1
-%patch1502 -p1
 popd
 
 pushd src/installer.*
 %patch1600 -p1
-%patch1601 -p1
 popd
 
 # Disable package validation which breaks our build.
@@ -604,6 +591,9 @@ install install_location_%{runtime_arch} %{buildroot}%{_sysconfdir}/dotnet/
 install -dm 0755 %{buildroot}%{_libdir}/dotnet/source-built-artifacts
 install -m 0644 artifacts/%{runtime_arch}/Release/Private.SourceBuilt.Artifacts.*.tar.gz %{buildroot}/%{_libdir}/dotnet/source-built-artifacts/
 
+# Quick and dirty check for https://github.com/dotnet/source-build/issues/2731
+test -f %{buildroot}%{_libdir}/dotnet/sdk/%{sdk_version}/Sdks/Microsoft.NET.Sdk/Sdk/Sdk.props
+
 
 # Check debug symbols in all elf objects. This is not in %%check
 # because native binaries are stripped by rpm-build after %%install.
@@ -673,6 +663,9 @@ export COMPlus_LTTng=0
 
 
 %changelog
+* Mon Feb 14 2022 Omair Majid <omajid@redhat.com> - 6.0.102-1
+- Update to .NET SDK 6.0.102 and Runtime 6.0.2
+
 * Fri Jan 28 2022 Omair Majid <omajid@redhat.com> - 6.0.101-3
 - Update to .NET SDK 6.0.101 and Runtime 6.0.1
 

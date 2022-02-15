@@ -1,0 +1,84 @@
+diff --git a/src/libraries/Microsoft.NETCore.Platforms/src/runtime.compatibility.json b/src/libraries/Microsoft.NETCore.Platforms/src/runtime.compatibility.json
+index bf6dfc3c1a1..1de4979b8ee 100644
+--- a/src/libraries/Microsoft.NETCore.Platforms/src/runtime.compatibility.json
++++ b/src/libraries/Microsoft.NETCore.Platforms/src/runtime.compatibility.json
+@@ -3029,6 +3029,38 @@
+     "any",
+     "base"
+   ],
++  "fedora.37": [
++    "fedora.37",
++    "fedora",
++    "linux",
++    "unix",
++    "any",
++    "base"
++  ],
++  "fedora.37-arm64": [
++    "fedora.37-arm64",
++    "fedora.37",
++    "fedora-arm64",
++    "fedora",
++    "linux-arm64",
++    "linux",
++    "unix-arm64",
++    "unix",
++    "any",
++    "base"
++  ],
++  "fedora.37-x64": [
++    "fedora.37-x64",
++    "fedora.37",
++    "fedora-x64",
++    "fedora",
++    "linux-x64",
++    "linux",
++    "unix-x64",
++    "unix",
++    "any",
++    "base"
++  ],
+   "freebsd": [
+     "freebsd",
+     "unix",
+diff --git a/src/libraries/Microsoft.NETCore.Platforms/src/runtime.json b/src/libraries/Microsoft.NETCore.Platforms/src/runtime.json
+index 2e6ec616b74..70a1582ba64 100644
+--- a/src/libraries/Microsoft.NETCore.Platforms/src/runtime.json
++++ b/src/libraries/Microsoft.NETCore.Platforms/src/runtime.json
+@@ -1146,6 +1146,23 @@
+         "fedora-x64"
+       ]
+     },
++    "fedora.37": {
++      "#import": [
++        "fedora"
++      ]
++    },
++    "fedora.37-arm64": {
++      "#import": [
++        "fedora.37",
++        "fedora-arm64"
++      ]
++    },
++    "fedora.37-x64": {
++      "#import": [
++        "fedora.37",
++        "fedora-x64"
++      ]
++    },
+     "freebsd": {
+       "#import": [
+         "unix"
+diff --git a/src/libraries/Microsoft.NETCore.Platforms/src/runtimeGroups.props b/src/libraries/Microsoft.NETCore.Platforms/src/runtimeGroups.props
+index 1945bb9af0e..75c6d28a30f 100644
+--- a/src/libraries/Microsoft.NETCore.Platforms/src/runtimeGroups.props
++++ b/src/libraries/Microsoft.NETCore.Platforms/src/runtimeGroups.props
+@@ -71,7 +71,7 @@
+     <RuntimeGroup Include="fedora">
+       <Parent>linux</Parent>
+       <Architectures>x64;arm64</Architectures>
+-      <Versions>23;24;25;26;27;28;29;30;31;32;33;34;35;36</Versions>
++      <Versions>23;24;25;26;27;28;29;30;31;32;33;34;35;36;37</Versions>
+       <TreatVersionsAsCompatible>false</TreatVersionsAsCompatible>
+     </RuntimeGroup>
+ 
