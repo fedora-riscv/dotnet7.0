@@ -13,18 +13,22 @@
     tests:
       - download_test_runner:
           dir: ./
-          run: wget --no-verbose https://github.com/redhat-developer/dotnet-bunny/releases/latest/download/turkey-$(uname -m) -O turkey && chmod +x ./turkey
+          run: wget --no-verbose https://github.com/redhat-developer/dotnet-bunny/releases/latest/download/turkey.tar.gz && tar xf turkey.tar.gz
       - print_test_runner_version:
           dir: ./
-          run: ./turkey --version
+          run: dotnet turkey/Turkey.dll --version
       - regular:
           dir: ./
-          run: ./turkey -l={{ remote_artifacts }} dotnet-regular-tests
+          run: dotnet turkey/Turkey.dll -l={{ remote_artifacts }} dotnet-regular-tests
     required_packages:
+    - aspnetcore-runtime-6.0
     - babeltrace
     - bash-completion
     - binutils
+    - dotnet-sdk-6.0
+    - dotnet-runtime-6.0
     - expect
+    - git
     - jq
     - lldb
     - lttng-tools

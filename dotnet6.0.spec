@@ -20,10 +20,10 @@
 # until that's done, disable LTO.  This has to happen before setting the flags below.
 %define _lto_cflags %{nil}
 
-%global host_version 6.0.2
-%global runtime_version 6.0.2
+%global host_version 6.0.3
+%global runtime_version 6.0.3
 %global aspnetcore_runtime_version %{runtime_version}
-%global sdk_version 6.0.102
+%global sdk_version 6.0.103
 %global templates_version %{runtime_version}
 #%%global templates_version %%(echo %%{runtime_version} | awk 'BEGIN { FS="."; OFS="." } {print $1, $2, $3+1 }')
 
@@ -241,8 +241,10 @@ Requires:       dotnet-hostfxr-6.0%{?_isa} >= %{host_rpm_version}-%{release}
 # libicu is dlopen()ed
 Requires:       libicu%{?_isa}
 
+# See src/runtime.*/src/libraries/Native/AnyOS/brotli-version.txt
+Provides: bundled(libbrotli) = 1.0.9
 %if %{use_bundled_libunwind}
-# See runtime.*/src/coreclr/pal/src/libunwind/libunwind-version.txt
+# See src/runtime.*/src/coreclr/pal/src/libunwind/libunwind-version.txt
 Provides: bundled(libunwind) = 1.5.rc1.28.g9165d2a1
 %endif
 
@@ -663,6 +665,9 @@ export COMPlus_LTTng=0
 
 
 %changelog
+* Thu Mar 10 2022 Omair Majid <omajid@redhat.com> - 6.0.103-1
+- Update to .NET SDK 6.0.103 and Runtime 6.0.3
+
 * Mon Feb 14 2022 Omair Majid <omajid@redhat.com> - 6.0.102-1
 - Update to .NET SDK 6.0.102 and Runtime 6.0.2
 
