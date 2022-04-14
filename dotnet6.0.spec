@@ -20,10 +20,11 @@
 # until that's done, disable LTO.  This has to happen before setting the flags below.
 %define _lto_cflags %{nil}
 
-%global host_version 6.0.3
-%global runtime_version 6.0.3
+%global host_version 6.0.4
+%global runtime_version 6.0.4
 %global aspnetcore_runtime_version %{runtime_version}
-%global sdk_version 6.0.103
+%global sdk_version 6.0.104
+%global sdk_feature_band_version %(echo %{sdk_version} | sed -e 's|[[:digit:]][[:digit:]]$|00|')
 %global templates_version %{runtime_version}
 #%%global templates_version %%(echo %%{runtime_version} | awk 'BEGIN { FS="."; OFS="." } {print $1, $2, $3+1 }')
 
@@ -85,7 +86,10 @@ Source11:       dotnet.sh.in
 Patch100:       runtime-arm64-lld-fix.patch
 # Mono still has a dependency on (now unbuildable) ILStrip which was removed from CoreCLR: https://github.com/dotnet/runtime/pull/60315
 Patch101:       runtime-mono-remove-ilstrip.patch
+# https://github.com/dotnet/runtime/pull/65392
 Patch102:       runtime-fedora-37-rid.patch
+# https://github.com/dotnet/runtime/pull/66594
+Patch103:       runtime-66594-s390x-debuginfo.patch
 
 # https://github.com/dotnet/command-line-api/pull/1401
 Patch300:       command-line-api-use-work-tree-with-git-apply.patch
@@ -133,6 +137,7 @@ ExclusiveArch:  aarch64 x86_64 s390x
 %else
 ExclusiveArch:  x86_64
 %endif
+
 
 BuildRequires:  clang
 BuildRequires:  cmake
@@ -409,6 +414,7 @@ pushd src/runtime.*
 %patch100 -p1
 %patch101 -p1
 %patch102 -p1
+%patch103 -p1
 popd
 
 pushd src/command-line-api.*
@@ -465,10 +471,6 @@ pushd src/installer.*
 %patch1600 -p1
 popd
 
-# Disable package validation which breaks our build.
-# There's no need to run validation in RPM packages anyway.
-# See https://github.com/dotnet/runtime/pull/60881
-sed -i -E 's|( /p:BuildDebPackage=false)|\1 /p:EnablePackageValidation=false|' src/runtime.*/eng/SourceBuild.props
 
 %if ! %{use_bundled_libunwind}
 sed -i -E 's|( /p:BuildDebPackage=false)|\1 --cmakeargs -DCLR_CMAKE_USE_SYSTEM_LIBUNWIND=TRUE|' src/runtime.*/eng/SourceBuild.props
@@ -596,7 +598,6 @@ install -m 0644 artifacts/%{runtime_arch}/Release/Private.SourceBuilt.Artifacts.
 # Quick and dirty check for https://github.com/dotnet/source-build/issues/2731
 test -f %{buildroot}%{_libdir}/dotnet/sdk/%{sdk_version}/Sdks/Microsoft.NET.Sdk/Sdk/Sdk.props
 
-
 # Check debug symbols in all elf objects. This is not in %%check
 # because native binaries are stripped by rpm-build after %%install.
 # So we need to do this check earlier.
@@ -654,8 +655,7 @@ export COMPlus_LTTng=0
 %dir %{_libdir}/dotnet/sdk
 %{_libdir}/dotnet/sdk/%{sdk_version}
 %dir %{_libdir}/dotnet/sdk-manifests
-# FIXME hardcoded version?
-%{_libdir}/dotnet/sdk-manifests/6.0.100
+%{_libdir}/dotnet/sdk-manifests/%{sdk_feature_band_version}
 %{_libdir}/dotnet/metadata
 %dir %{_libdir}/dotnet/packs
 
@@ -665,6 +665,9 @@ export COMPlus_LTTng=0
 
 
 %changelog
+* Tue Apr 12 2022 Omair Majid <omajid@redhat.com> - 6.0.104-1
+- Update to .NET SDK 6.0.104 and Runtime 6.0.4
+
 * Thu Mar 10 2022 Omair Majid <omajid@redhat.com> - 6.0.103-1
 - Update to .NET SDK 6.0.103 and Runtime 6.0.3
 

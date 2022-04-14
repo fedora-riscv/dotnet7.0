@@ -65,11 +65,10 @@ def scan_file(file):
 
 def is_elf(file):
     result = subprocess.run(['file', file], stdout=subprocess.PIPE, encoding='utf-8', check=True)
-    return re.search('ELF 64-bit LSB (?:pie )(?:executable|shared object)', result.stdout)
+    return re.search(r'ELF 64-bit [LM]SB (?:pie )?(?:executable|shared object)', result.stdout)
 
 def scan_file_if_sensible(file):
     if is_elf(file):
-        # print(file)
         return scan_file(file)
     return None
 
