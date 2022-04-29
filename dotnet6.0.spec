@@ -519,7 +519,7 @@ unset LDFLAGS
 
 # Disable tracing, which is incompatible with certain versions of
 # lttng See https://github.com/dotnet/runtime/issues/57784. The
-# suggested compile-time change doesn't work, unfrotunately.
+# suggested compile-time change doesn't work, unfortunately.
 export COMPlus_LTTng=0
 
 VERBOSE=1 ./build.sh \
