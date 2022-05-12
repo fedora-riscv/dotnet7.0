@@ -20,10 +20,10 @@
 # until that's done, disable LTO.  This has to happen before setting the flags below.
 %define _lto_cflags %{nil}
 
-%global host_version 6.0.4
-%global runtime_version 6.0.4
+%global host_version 6.0.5
+%global runtime_version 6.0.5
 %global aspnetcore_runtime_version %{runtime_version}
-%global sdk_version 6.0.104
+%global sdk_version 6.0.105
 %global sdk_feature_band_version %(echo %{sdk_version} | sed -e 's|[[:digit:]][[:digit:]]$|00|')
 %global templates_version %{runtime_version}
 #%%global templates_version %%(echo %%{runtime_version} | awk 'BEGIN { FS="."; OFS="." } {print $1, $2, $3+1 }')
@@ -91,19 +91,8 @@ Patch102:       runtime-fedora-37-rid.patch
 # https://github.com/dotnet/runtime/pull/66594
 Patch103:       runtime-66594-s390x-debuginfo.patch
 
-# https://github.com/dotnet/command-line-api/pull/1401
-Patch300:       command-line-api-use-work-tree-with-git-apply.patch
-
-# https://github.com/microsoft/vstest/pull/3046
-Patch400:       vstest-use-work-tree-with-git-apply.patch
-
-# This is the suggestion from https://github.com/dotnet/source-build/pull/2450, applied
-Patch500:       fsharp-use-work-tree-with-git-apply.patch
 # Disable apphost, needed for s390x
-Patch501:       fsharp-no-apphost.patch
-
-# This is the suggestion from https://github.com/dotnet/source-build/pull/2450, applied
-Patch600:       xliff-tasks-use-work-tree-with-git-apply.patch
+Patch500:       fsharp-no-apphost.patch
 
 # Disable apphost, needed for s390x
 Patch700:       arcade-no-apphost.patch
@@ -417,21 +406,8 @@ pushd src/runtime.*
 %patch103 -p1
 popd
 
-pushd src/command-line-api.*
-%patch300 -p1
-popd
-
-pushd src/vstest.*
-%patch400 -p1
-popd
-
 pushd src/fsharp.*
 %patch500 -p1
-%patch501 -p1
-popd
-
-pushd src/xliff-tasks.*
-%patch600 -p1
 popd
 
 pushd src/arcade.*
@@ -455,10 +431,6 @@ pushd src/msbuild.*
 %patch1000 -p1
 %patch1001 -p1
 %endif
-
-popd
-
-pushd src/aspnetcore.*
 
 popd
 
@@ -499,23 +471,27 @@ export CXXFLAGS="%{dotnet_cflags}"
 export LDFLAGS="%{dotnet_ldflags}"
 %endif
 
+# -fstack-clash-protection breaks CoreCLR
+CFLAGS=$(echo $CFLAGS  | sed -e 's/-fstack-clash-protection//' )
+CXXFLAGS=$(echo $CXXFLAGS  | sed -e 's/-fstack-clash-protection//' )
+
 %ifarch aarch64
 # -mbranch-protection=standard breaks unwinding in CoreCLR through libunwind
 CFLAGS=$(echo $CFLAGS | sed -e 's/-mbranch-protection=standard //')
 CXXFLAGS=$(echo $CXXFLAGS | sed -e 's/-mbranch-protection=standard //')
 %endif
 
-# -fstack-clash-protection breaks CoreCLR
-CFLAGS=$(echo $CFLAGS  | sed -e 's/-fstack-clash-protection//' )
-CXXFLAGS=$(echo $CXXFLAGS  | sed -e 's/-fstack-clash-protection//' )
+%ifarch s390x
+# -march=z13 -mtune=z14 makes clang crash while compiling .NET
+CFLAGS=$(echo $CFLAGS | sed -e 's/ -march=z13//')
+CFLAGS=$(echo $CFLAGS | sed -e 's/ -mtune=z14//')
+CXXFLAGS=$(echo $CXXFLAGS | sed -e 's/ -march=z13//')
+CXXFLAGS=$(echo $CXXFLAGS | sed -e 's/ -mtune=z14//')
+%endif
 
 export EXTRA_CFLAGS="$CFLAGS"
 export EXTRA_CXXFLAGS="$CXXFLAGS"
 export EXTRA_LDFLAGS="$LDFLAGS"
-
-unset CFLAGS
-unset CXXFLAGS
-unset LDFLAGS
 
 # Disable tracing, which is incompatible with certain versions of
 # lttng See https://github.com/dotnet/runtime/issues/57784. The
@@ -551,8 +527,8 @@ find %{buildroot}%{_libdir}/dotnet/ -type f -name 'vstest.console' -delete
 # Install managed symbols: disabled because they don't contain sources
 # but point to the paths the sources would have been at in the build
 # servers. The end user experience is pretty bad atm.
-# tar xf artifacts/%{runtime_arch}/Release/runtime/dotnet-runtime-symbols-%{runtime_id}-%{runtime_version}.tar.gz \
-#    -C %{buildroot}/%{_libdir}/dotnet/shared/Microsoft.NETCore.App/%{runtime_version}/
+# tar xf artifacts/%%{runtime_arch}/Release/runtime/dotnet-runtime-symbols-%%{runtime_id}-%%{runtime_version}.tar.gz \
+#    -C %%{buildroot}/%%{_libdir}/dotnet/shared/Microsoft.NETCore.App/%%{runtime_version}/
 
 # Fix executable permissions on files
 find %{buildroot}%{_libdir}/dotnet/ -type f -name 'apphost' -exec chmod +x {} \;
@@ -595,6 +571,7 @@ install install_location_%{runtime_arch} %{buildroot}%{_sysconfdir}/dotnet/
 install -dm 0755 %{buildroot}%{_libdir}/dotnet/source-built-artifacts
 install -m 0644 artifacts/%{runtime_arch}/Release/Private.SourceBuilt.Artifacts.*.tar.gz %{buildroot}/%{_libdir}/dotnet/source-built-artifacts/
 
+
 # Quick and dirty check for https://github.com/dotnet/source-build/issues/2731
 test -f %{buildroot}%{_libdir}/dotnet/sdk/%{sdk_version}/Sdks/Microsoft.NET.Sdk/Sdk/Sdk.props
 
@@ -613,6 +590,7 @@ export COMPlus_LTTng=0
 %endif
 
 %{buildroot}%{_libdir}/dotnet/dotnet --info
+%{buildroot}%{_libdir}/dotnet/dotnet --version
 
 
 %files -n dotnet
@@ -665,6 +643,9 @@ export COMPlus_LTTng=0
 
 
 %changelog
+* Wed May 11 2022 Omair Majid <omajid@redhat.com> - 6.0.105-1
+- Update to .NET SDK 6.0.105 and Runtime 6.0.5
+
 * Tue Apr 12 2022 Omair Majid <omajid@redhat.com> - 6.0.104-1
 - Update to .NET SDK 6.0.104 and Runtime 6.0.4
 

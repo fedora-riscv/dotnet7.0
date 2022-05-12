@@ -118,9 +118,8 @@ fi
 if [ ! -f "${unmodified_tarball_name}.tar.gz" ]; then
     temp_dir=$(mktemp -d -p "$(pwd)")
     pushd "${temp_dir}"
-    git clone https://github.com/dotnet/installer
+    git clone https://github.com/dotnet/installer --branch "${tag}" --depth 1
     pushd installer
-    git checkout "${tag}"
     git submodule update --init --recursive
     clean_dotnet_cache
     mkdir -p "../${unmodified_tarball_name}"

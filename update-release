@@ -63,8 +63,8 @@ if [[ -f "dotnet-${tag}-original.tar.gz" ]]; then
 else
     if [[ -n "${user_provided_tarball_name}" ]]; then
         ./rename-tarball "$user_provided_tarball_name" "dotnet-${tag}-original.tar.gz"
-    elif [[ -f "dotnet-${sdk_version}-SDK.tar.gz" ]]; then
-        ./rename-tarball "dotnet-${sdk_version}-SDK.tar.gz" "dotnet-${tag}-original.tar.gz"
+    elif [[ -f "dotnet-${sdk_version}.tar.gz" ]]; then
+        ./rename-tarball "dotnet-${sdk_version}.tar.gz" "dotnet-${tag}-original.tar.gz"
     elif [[ -f "dotnet-${runtime_version}.tar.gz" ]]; then
         ./rename-tarball "dotnet-${runtime_version}.tar.gz" "dotnet-${tag}-original.tar.gz"
     fi
