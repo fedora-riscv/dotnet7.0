@@ -1,6 +1,7 @@
-# dotnet6.0
+# dotnet7.0
 
-This is the .NET 6.0 package for Fedora.
+This is the work-in-progress .NET 7.0 package for Fedora. When it's ready, it
+will be merged into Fedora proper.
 
 This package is maintained by the Fedora DotNet SIG (Special Interest
 Group). You can find out more about the DotNet SIG at:
@@ -10,7 +11,7 @@ Group). You can find out more about the DotNet SIG at:
 - https://lists.fedoraproject.org/archives/list/dotnet-sig@lists.fedoraproject.org/
 
 Please report any issues [using
-bugzilla](https://bugzilla.redhat.com/enter_bug.cgi?product=Fedora&component=dotnet6.0).
+bugzilla](https://bugzilla.redhat.com/enter_bug.cgi?product=Fedora&component=dotnet7.0).
 
 # Specification
 
@@ -31,8 +32,8 @@ follow.
 
 2. Checkout the forked repository.
 
-    - `git clone ssh://$USER@pkgs.fedoraproject.org/forks/$USER/rpms/dotnet6.0.git`
-    - `cd dotnet6.0`
+    - `git clone ssh://$USER@pkgs.fedoraproject.org/forks/$USER/rpms/dotnet7.0.git`
+    - `cd dotnet7.0`
 
 3. Make your changes. Don't forget to add a changelog.
 
@@ -75,8 +76,8 @@ follow.
 
 2. Checkout the forked repository.
 
-    - `git clone ssh://$USER@pkgs.fedoraproject.org/forks/$USER/rpms/dotnet6.0.git`
-    - `cd dotnet6.0`
+    - `git clone ssh://$USER@pkgs.fedoraproject.org/forks/$USER/rpms/dotnet7.0.git`
+    - `cd dotnet7.0`
 
 3. Build the new upstream source tarball. Update the versions in the
    spec file. Add a changelog. This is generally automated by the

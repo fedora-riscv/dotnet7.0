@@ -1,4 +1,4 @@
-%bcond_with bootstrap
+%bcond_without bootstrap
 
 # Avoid provides/requires from private libraries
 %global privlibs             libhostfxr
@@ -20,21 +20,22 @@
 # until that's done, disable LTO.  This has to happen before setting the flags below.
 %define _lto_cflags %{nil}
 
-%global host_version 6.0.5
-%global runtime_version 6.0.5
-%global aspnetcore_runtime_version %{runtime_version}
-%global sdk_version 6.0.105
-%global sdk_feature_band_version %(echo %{sdk_version} | sed -e 's|[[:digit:]][[:digit:]]$|00|')
-%global templates_version %{runtime_version}
+%global host_version 7.0.0-preview.6.22312.1
+%global runtime_version 7.0.0-preview.6.22312.1
+%global aspnetcore_runtime_version 7.0.0-preview.6.22312.2
+%global sdk_version 7.0.100-preview.6.22315.1
+%global sdk_feature_band_version %(echo %{sdk_version} | cut -d '-' -f 1 | sed -e 's|[[:digit:]][[:digit:]]$|00|')
+%global templates_version 7.0.0-preview.6.22312.2
 #%%global templates_version %%(echo %%{runtime_version} | awk 'BEGIN { FS="."; OFS="." } {print $1, $2, $3+1 }')
 
-%global host_rpm_version %{host_version}
-%global runtime_rpm_version %{runtime_version}
-%global aspnetcore_runtime_rpm_version %{aspnetcore_runtime_version}
-%global sdk_rpm_version %{sdk_version}
+%global host_rpm_version 7.0.0
+%global runtime_rpm_version 7.0.0
+%global aspnetcore_runtime_rpm_version 7.0.0
+%global sdk_rpm_version 7.0.0
 
 # upstream can update releases without revving the SDK version so these don't always match
-%global upstream_tag v%{sdk_version}
+#%%global upstream_tag v%%{sdk_version}
+%global upstream_tag main
 
 %if 0%{?fedora} || 0%{?rhel} < 8
 %global use_bundled_libunwind 0
@@ -60,7 +61,7 @@
 
 Name:           dotnet6.0
 Version:        %{sdk_rpm_version}
-Release:        1%{?dist}
+Release:        0.1%{?dist}
 Summary:        .NET Runtime and SDK
 License:        MIT and ASL 2.0 and BSD and LGPLv2+ and CC-BY and CC0 and MS-PL and EPL-1.0 and GPL+ and GPLv2 and ISC and OFL and zlib
 URL:            https://github.com/dotnet/
@@ -82,43 +83,7 @@ Source0:        dotnet-%{upstream_tag}.tar.gz
 Source10:       check-debug-symbols.py
 Source11:       dotnet.sh.in
 
-# Fix using lld on Fedora
-Patch100:       runtime-arm64-lld-fix.patch
-# Mono still has a dependency on (now unbuildable) ILStrip which was removed from CoreCLR: https://github.com/dotnet/runtime/pull/60315
-Patch101:       runtime-mono-remove-ilstrip.patch
-# https://github.com/dotnet/runtime/pull/65392
-Patch102:       runtime-fedora-37-rid.patch
-# https://github.com/dotnet/runtime/pull/66594
-Patch103:       runtime-66594-s390x-debuginfo.patch
-
-# Disable apphost, needed for s390x
-Patch500:       fsharp-no-apphost.patch
-
-# Disable apphost, needed for s390x
-Patch700:       arcade-no-apphost.patch
-
-# Named mutex fix for mono, needed for s390x. https://github.com/dotnet/roslyn/pull/57003
-Patch800:       roslyn-57003-mono-named-mutex.patch
-# Disable apphost, needed for s390x
-Patch801:       roslyn-no-apphost.patch
-
-# Disable apphost, needed for s390x
-Patch900:       roslyn-analyzers-no-apphost.patch
-
-# Fix mono-specific runtime crashes running msbuild. CoreCLR does not
-# load types that are not actually used/invoked at runtime, while mono
-# does. System.Configuration and System.Security are missing in
-# source-build builds, which breaks msbuild.
-Patch1000:      msbuild-no-systemsecurity.patch
-Patch1001:      msbuild-no-systemconfiguration.patch
-
-# Disable telemetry by default; make it opt-in
-Patch1500:      sdk-telemetry-optout.patch
-# https://github.com/dotnet/sdk/pull/22373
-Patch1501:      sdk-22373-portablerid.patch
-
-# https://github.com/dotnet/installer/pull/12516
-Patch1600:      installer-12516-portablerid.patch
+Patch1:         runtime-fix-cmakeargs-handling.patch
 
 
 %if 0%{?fedora} || 0%{?rhel} >= 8
@@ -235,10 +200,10 @@ Requires:       dotnet-hostfxr-6.0%{?_isa} >= %{host_rpm_version}-%{release}
 # libicu is dlopen()ed
 Requires:       libicu%{?_isa}
 
-# See src/runtime.*/src/libraries/Native/AnyOS/brotli-version.txt
+# See src/runtime/src/libraries/Native/AnyOS/brotli-version.txt
 Provides: bundled(libbrotli) = 1.0.9
 %if %{use_bundled_libunwind}
-# See src/runtime.*/src/coreclr/pal/src/libunwind/libunwind-version.txt
+# See src/runtime/src/coreclr/pal/src/libunwind/libunwind-version.txt
 Provides: bundled(libunwind) = 1.5.rc1.28.g9165d2a1
 %endif
 
@@ -259,7 +224,7 @@ applications and micro-services.
 Version:        %{aspnetcore_runtime_rpm_version}
 Summary:        ASP.NET Core 6.0 runtime
 
-Requires:       dotnet-runtime-6.0%{?_isa} >= %{runtime_rpm_version}-%{release}
+Requires:       dotnet-runtime-6.0%{?_isa} = %{runtime_rpm_version}-%{release}
 
 %description -n aspnetcore-runtime-6.0
 The ASP.NET Core runtime contains everything needed to run .NET
@@ -390,63 +355,19 @@ find -iname '*.nupkg' -type f -delete
 find -iname '*.zip' -type f -delete
 rm -rf .dotnet/
 rm -rf packages/source-built
-
-mkdir -p packages/archive
-ln -s %{_libdir}/dotnet/source-built-artifacts/Private.SourceBuilt.Artifacts.*.tar.gz packages/archive/
-ln -s %{_libdir}/dotnet/reference-packages/Private.SourceBuild.ReferencePackages*.tar.gz packages/archive/
 %endif
 
 # Fix bad hardcoded path in build
-sed -i 's|/usr/share/dotnet|%{_libdir}/dotnet|' src/runtime.*/src/native/corehost/hostmisc/pal.unix.cpp
-
-pushd src/runtime.*
-%patch100 -p1
-%patch101 -p1
-%patch102 -p1
-%patch103 -p1
-popd
-
-pushd src/fsharp.*
-%patch500 -p1
-popd
-
-pushd src/arcade.*
-%patch700 -p1
-popd
-
-pushd src/roslyn.*
-%patch800 -p3
-%patch801 -p1
-popd
-
-pushd src/roslyn-analyzers.*
-%patch900 -p1
-popd
-
-pushd src/msbuild.*
-
-# These are mono-specific fixes. Mono is only used on s390x. Restrict
-# patch to s390x to avoid potential risk in other architectures.
-%ifarch s390x
-%patch1000 -p1
-%patch1001 -p1
-%endif
-
-popd
-
-pushd src/sdk.*
-%patch1500 -p1
-%patch1501 -p1
-popd
-
-pushd src/installer.*
-%patch1600 -p1
-popd
-
+sed -i 's|/usr/share/dotnet|%{_libdir}/dotnet|' src/runtime/src/native/corehost/hostmisc/pal.unix.cpp
 
 %if ! %{use_bundled_libunwind}
-sed -i -E 's|( /p:BuildDebPackage=false)|\1 --cmakeargs -DCLR_CMAKE_USE_SYSTEM_LIBUNWIND=TRUE|' src/runtime.*/eng/SourceBuild.props
+sed -i -E 's|( /p:BuildDebPackage=false)|\1 --cmakeargs -DCLR_CMAKE_USE_SYSTEM_LIBUNWIND=TRUE|' src/runtime/eng/SourceBuild.props
 %endif
+
+pushd src/runtime
+%patch1 -p1
+popd
+
 
 %build
 cat /etc/os-release
@@ -498,10 +419,15 @@ export EXTRA_LDFLAGS="$LDFLAGS"
 # suggested compile-time change doesn't work, unfortunately.
 export COMPlus_LTTng=0
 
+
+# FIXME: Remove --online flag
+
 VERBOSE=1 ./build.sh \
 %if %{without bootstrap}
     --with-sdk previously-built-dotnet \
+    --with-packages %{_libdir}/dotnet/source-built-artifacts/Private.SourceBuilt.Artifacts.*.tar.gz
 %endif
+    --online \
     -- \
 
 echo \
@@ -550,7 +476,7 @@ install dotnet.sh %{buildroot}%{_sysconfdir}/profile.d/
 
 install -dm 0755 %{buildroot}/%{_datadir}/bash-completion/completions
 # dynamic completion needs the file to be named the same as the base command
-install src/sdk.*/scripts/register-completions.bash %{buildroot}/%{_datadir}/bash-completion/completions/dotnet
+install src/sdk/scripts/register-completions.bash %{buildroot}/%{_datadir}/bash-completion/completions/dotnet
 
 # TODO: the zsh completion script needs to be ported to use #compdef
 #install -dm 755 %%{buildroot}/%%{_datadir}/zsh/site-functions
@@ -559,8 +485,10 @@ install src/sdk.*/scripts/register-completions.bash %{buildroot}/%{_datadir}/bas
 install -dm 0755 %{buildroot}%{_bindir}
 ln -s ../../%{_libdir}/dotnet/dotnet %{buildroot}%{_bindir}/
 
-install -dm 0755 %{buildroot}%{_mandir}/man1/
-find -iname 'dotnet*.1' -type f -exec cp {} %{buildroot}%{_mandir}/man1/ \;
+for section in 1 7; do
+    install -dm 0755 %{buildroot}%{_mandir}/man${section}/
+    find -iname 'dotnet*'.${section} -type f -exec cp {} %{buildroot}%{_mandir}/man${section}/ \;
+done
 
 install -dm 0755 %{buildroot}%{_sysconfdir}/dotnet
 echo "%{_libdir}/dotnet" >> install_location
@@ -605,6 +533,7 @@ export COMPlus_LTTng=0
 %license %{_libdir}/dotnet/LICENSE.txt
 %license %{_libdir}/dotnet/ThirdPartyNotices.txt
 %doc %{_mandir}/man1/dotnet*.1.gz
+%doc %{_mandir}/man7/dotnet*.7.gz
 %config(noreplace) %{_sysconfdir}/profile.d/dotnet.sh
 %config(noreplace) %{_sysconfdir}/dotnet
 %dir %{_datadir}/bash-completion

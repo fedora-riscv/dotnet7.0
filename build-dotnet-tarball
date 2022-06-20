@@ -4,11 +4,9 @@
 #   build-dotnet-tarball [--bootstrap] <tag-from-installer>
 #
 # Creates a source archive from a tag (or commit) at github.com/dotnet/installer
-
-# installer is a little strange, we need to clone it, check out the
-# tag, build it and then create a tarball from the archive directory
-# it creates. Also, it is likely that the source archive is only
-# buildable on the OS it was initially created in.
+#
+# Clone dotnet/installer, check out the tag (if any), and build the
+# source-tarball.
 
 set -euo pipefail
 IFS=$'\n\t'
@@ -62,8 +60,10 @@ archmap=(
     ["aarch64"]="arm64"
     ["amd64"]="x64"
     ["armv8l"]="arm"
-    ["i686"]="x86"
     ["i386"]="x86"
+    ["i686"]="x86"
+    ["ppc64le"]="ppc64le"
+    ["s390x"]="s390x"
     ["x86_64"]="x64"
 )
 
@@ -123,18 +123,24 @@ if [ ! -f "${unmodified_tarball_name}.tar.gz" ]; then
     git submodule update --init --recursive
     clean_dotnet_cache
     mkdir -p "../${unmodified_tarball_name}"
-    ./build.sh /p:ArcadeBuildTarball=true /p:TarballDir="$(readlink -f ../"${unmodified_tarball_name}")"
+    ./build.sh /p:ArcadeBuildTarball=true
     popd
 
     popd
 
-    tar cf "${unmodified_tarball_name}.tar.gz" -C "${temp_dir}" "${unmodified_tarball_name}"
+    cp -a \
+        "${temp_dir}"/installer/artifacts/packages/Debug/Shipping/dotnet-sdk-source-7*.tar.gz \
+        "${unmodified_tarball_name}.tar.gz"
 
     rm -rf "${temp_dir}"
 fi
 
 rm -rf "${tarball_name}"
-tar xf "${unmodified_tarball_name}.tar.gz"
+
+mkdir -p "${unmodified_tarball_name}"
+pushd "${unmodified_tarball_name}"
+tar xf ../"${unmodified_tarball_name}.tar.gz"
+popd
 mv "${unmodified_tarball_name}" "${tarball_name}"
 
 pushd "${tarball_name}"
@@ -144,23 +150,6 @@ if [[ ${build_bootstrap} == true ]]; then
         echo "error: this is not going to work! update $0 to fix this issue."
         exit 1
     fi
-
-    pushd packages/archive/
-    curl -O $(cat archiveArtifacts.txt)
-    popd
-
-    mkdir foo
-    pushd foo
-
-    tar xf ../packages/archive/Private.SourceBuilt.Artifacts.*.tar.gz
-    sed -i -E 's|<MicrosoftNETHostModelPackageVersion>6.0.0-rtm.21521.1</|<MicrosoftNETHostModelPackageVersion>6.0.0-rtm.21521.4</|' PackageVersions.props
-    sed -i -E 's|<MicrosoftNETHostModelVersion>6.0.0-rtm.21521.1</|<MicrosoftNETHostModelVersion>6.0.0-rtm.21521.4</|' PackageVersions.props
-    cat PackageVersions.props
-
-    tar czf ../packages/archive/Private.SourceBuilt.Artifacts.*.tar.gz *
-
-    popd
-    rm -rf foo
 
     ./prep.sh --bootstrap
 
@@ -182,19 +171,19 @@ fi
 # not-very-useful artifacts to reduce tarball size
 
 # Binaries for gradle
-rm -r src/aspnetcore.*/src/SignalR/clients/java/signalr/gradle*
-
-# Unnecessary crypto implementation: IDEA
-rm -r src/runtime.*/src/tests/JIT/Performance/CodeQuality/Bytemark/
+rm -r src/aspnetcore/src/SignalR/clients/java/signalr/gradle*
 
 # https://github.com/dotnet/aspnetcore/issues/34785
-find src/aspnetcore.*/src -type d -name samples -print0 | xargs -0 rm -r
+find src/aspnetcore/src -type d -name samples -print0 | xargs -0 rm -r
+
+# Unnecessary crypto implementation: IDEA
+rm -r src/runtime/src/tests/JIT/Performance/CodeQuality/Bytemark/
 
 # https://github.com/NuGet/Home/issues/11094
-rm -r src/nuget-client.*/test/EndToEnd
+rm -r src/nuget-client/test/EndToEnd
 
 # https://github.com/Humanizr/sample-aspnetmvc/issues/1
-rm -r src/source-build.*/src/humanizer/samples/
+rm -r src/source-build-externals/src/humanizer/samples/
 
 popd
 
