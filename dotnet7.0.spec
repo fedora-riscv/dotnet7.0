@@ -20,12 +20,12 @@
 # until that's done, disable LTO.  This has to happen before setting the flags below.
 %define _lto_cflags %{nil}
 
-%global host_version 7.0.0-preview.6.22312.1
-%global runtime_version 7.0.0-preview.6.22312.1
-%global aspnetcore_runtime_version 7.0.0-preview.6.22312.2
-%global sdk_version 7.0.100-preview.6.22315.1
+%global host_version 7.0.0-rc.1.22367.4
+%global runtime_version 7.0.0-rc.1.22367.4
+%global aspnetcore_runtime_version 7.0.0-rc.1.22368.6
+%global sdk_version 7.0.100-rc.1.22372.1
 %global sdk_feature_band_version %(echo %{sdk_version} | cut -d '-' -f 1 | sed -e 's|[[:digit:]][[:digit:]]$|00|')
-%global templates_version 7.0.0-preview.6.22312.2
+%global templates_version 7.0.0-rc.1.22368.6
 #%%global templates_version %%(echo %%{runtime_version} | awk 'BEGIN { FS="."; OFS="." } {print $1, $2, $3+1 }')
 
 %global host_rpm_version 7.0.0
@@ -35,7 +35,7 @@
 
 # upstream can update releases without revving the SDK version so these don't always match
 #%%global upstream_tag v%%{sdk_version}
-%global upstream_tag main
+%global upstream_tag ace7452f3bc6801cf4c4b5745b777c60e9e496a7
 
 %if 0%{?fedora} || 0%{?rhel} < 8
 %global use_bundled_libunwind 0
@@ -59,7 +59,7 @@
 
 %{!?runtime_id:%global runtime_id %(. /etc/os-release ; echo "${ID}.${VERSION_ID%%.*}")-%{runtime_arch}}
 
-Name:           dotnet6.0
+Name:           dotnet7.0
 Version:        %{sdk_rpm_version}
 Release:        0.1%{?dist}
 Summary:        .NET Runtime and SDK
@@ -83,11 +83,11 @@ Source0:        dotnet-%{upstream_tag}.tar.gz
 Source10:       check-debug-symbols.py
 Source11:       dotnet.sh.in
 
-Patch1:         runtime-fix-cmakeargs-handling.patch
-
 
 %if 0%{?fedora} || 0%{?rhel} >= 8
-ExclusiveArch:  aarch64 x86_64 s390x
+# FIXME
+# ExclusiveArch:  aarch64 x86_64 s390x
+ExclusiveArch:  x86_64
 %else
 ExclusiveArch:  x86_64
 %endif
@@ -97,8 +97,8 @@ BuildRequires:  clang
 BuildRequires:  cmake
 BuildRequires:  coreutils
 %if %{without bootstrap}
-BuildRequires:  dotnet-sdk-6.0
-BuildRequires:  dotnet-sdk-6.0-source-built-artifacts
+BuildRequires:  dotnet-sdk-7.0
+BuildRequires:  dotnet-sdk-7.0-source-built-artifacts
 %endif
 BuildRequires:  findutils
 BuildRequires:  git
@@ -140,7 +140,7 @@ application to drive everything.
 Version:        %{sdk_rpm_version}
 Summary:        .NET CLI tools and runtime
 
-Requires:       dotnet-sdk-6.0%{?_isa} >= %{sdk_rpm_version}-%{release}
+Requires:       dotnet-sdk-7.0%{?_isa} >= %{sdk_rpm_version}-%{release}
 
 %description -n dotnet
 .NET is a fast, lightweight and modular platform for creating
@@ -170,7 +170,7 @@ It particularly focuses on creating console applications, web
 applications and micro-services.
 
 
-%package -n dotnet-hostfxr-6.0
+%package -n dotnet-hostfxr-7.0
 
 Version:        %{host_rpm_version}
 Summary:        .NET command line host resolver
@@ -179,7 +179,7 @@ Summary:        .NET command line host resolver
 # provided by this package, or from a newer version of .NET
 Requires:       dotnet-host%{?_isa} >= %{host_rpm_version}-%{release}
 
-%description -n dotnet-hostfxr-6.0
+%description -n dotnet-hostfxr-7.0
 The .NET host resolver contains the logic to resolve and select
 the right version of the .NET SDK or runtime to use.
 
@@ -190,12 +190,12 @@ It particularly focuses on creating console applications, web
 applications and micro-services.
 
 
-%package -n dotnet-runtime-6.0
+%package -n dotnet-runtime-7.0
 
 Version:        %{runtime_rpm_version}
-Summary:        NET 6.0 runtime
+Summary:        NET 7.0 runtime
 
-Requires:       dotnet-hostfxr-6.0%{?_isa} >= %{host_rpm_version}-%{release}
+Requires:       dotnet-hostfxr-7.0%{?_isa} >= %{host_rpm_version}-%{release}
 
 # libicu is dlopen()ed
 Requires:       libicu%{?_isa}
@@ -207,7 +207,7 @@ Provides: bundled(libbrotli) = 1.0.9
 Provides: bundled(libunwind) = 1.5.rc1.28.g9165d2a1
 %endif
 
-%description -n dotnet-runtime-6.0
+%description -n dotnet-runtime-7.0
 The .NET runtime contains everything needed to run .NET applications.
 It includes a high performance Virtual Machine as well as the framework
 libraries used by .NET applications.
@@ -219,14 +219,14 @@ It particularly focuses on creating console applications, web
 applications and micro-services.
 
 
-%package -n aspnetcore-runtime-6.0
+%package -n aspnetcore-runtime-7.0
 
 Version:        %{aspnetcore_runtime_rpm_version}
-Summary:        ASP.NET Core 6.0 runtime
+Summary:        ASP.NET Core 7.0 runtime
 
-Requires:       dotnet-runtime-6.0%{?_isa} = %{runtime_rpm_version}-%{release}
+Requires:       dotnet-runtime-7.0%{?_isa} = %{runtime_rpm_version}-%{release}
 
-%description -n aspnetcore-runtime-6.0
+%description -n aspnetcore-runtime-7.0
 The ASP.NET Core runtime contains everything needed to run .NET
 web applications. It includes a high performance Virtual Machine as
 well as the framework libraries used by .NET applications.
@@ -238,16 +238,16 @@ It particularly focuses on creating console applications, web
 applications and micro-services.
 
 
-%package -n dotnet-templates-6.0
+%package -n dotnet-templates-7.0
 
 Version:        %{sdk_rpm_version}
-Summary:        .NET 6.0 templates
+Summary:        .NET 7.0 templates
 
 # Theoretically any version of the host should work. But lets aim for the one
 # provided by this package, or from a newer version of .NET
 Requires:       dotnet-host%{?_isa} >= %{host_rpm_version}-%{release}
 
-%description -n dotnet-templates-6.0
+%description -n dotnet-templates-7.0
 This package contains templates used by the .NET SDK.
 
 .NET is a fast, lightweight and modular platform for creating
@@ -257,24 +257,24 @@ It particularly focuses on creating console applications, web
 applications and micro-services.
 
 
-%package -n dotnet-sdk-6.0
+%package -n dotnet-sdk-7.0
 
 Version:        %{sdk_rpm_version}
-Summary:        .NET 6.0 Software Development Kit
+Summary:        .NET 7.0 Software Development Kit
 
 Provides:       bundled(js-jquery)
 
-Requires:       dotnet-runtime-6.0%{?_isa} >= %{runtime_rpm_version}-%{release}
-Requires:       aspnetcore-runtime-6.0%{?_isa} >= %{aspnetcore_runtime_rpm_version}-%{release}
+Requires:       dotnet-runtime-7.0%{?_isa} >= %{runtime_rpm_version}-%{release}
+Requires:       aspnetcore-runtime-7.0%{?_isa} >= %{aspnetcore_runtime_rpm_version}-%{release}
 
-Requires:       dotnet-apphost-pack-6.0%{?_isa} >= %{runtime_rpm_version}-%{release}
-Requires:       dotnet-targeting-pack-6.0%{?_isa} >= %{runtime_rpm_version}-%{release}
-Requires:       aspnetcore-targeting-pack-6.0%{?_isa} >= %{aspnetcore_runtime_rpm_version}-%{release}
+Requires:       dotnet-apphost-pack-7.0%{?_isa} >= %{runtime_rpm_version}-%{release}
+Requires:       dotnet-targeting-pack-7.0%{?_isa} >= %{runtime_rpm_version}-%{release}
+Requires:       aspnetcore-targeting-pack-7.0%{?_isa} >= %{aspnetcore_runtime_rpm_version}-%{release}
 Requires:       netstandard-targeting-pack-2.1%{?_isa} >= %{sdk_rpm_version}-%{release}
 
-Requires:       dotnet-templates-6.0%{?_isa} >= %{sdk_rpm_version}-%{release}
+Requires:       dotnet-templates-7.0%{?_isa} >= %{sdk_rpm_version}-%{release}
 
-%description -n dotnet-sdk-6.0
+%description -n dotnet-sdk-7.0
 The .NET SDK is a collection of command line applications to
 create, build, publish and run .NET applications.
 
@@ -303,18 +303,18 @@ applications using the .NET SDK.
 %{_libdir}/dotnet/packs/%{5}
 }
 
-%dotnet_targeting_pack dotnet-apphost-pack-6.0 %{runtime_rpm_version} Microsoft.NETCore.App 6.0 Microsoft.NETCore.App.Host.%{runtime_id}
-%dotnet_targeting_pack dotnet-targeting-pack-6.0 %{runtime_rpm_version} Microsoft.NETCore.App 6.0 Microsoft.NETCore.App.Ref
-%dotnet_targeting_pack aspnetcore-targeting-pack-6.0 %{aspnetcore_runtime_rpm_version} Microsoft.AspNetCore.App 6.0 Microsoft.AspNetCore.App.Ref
+%dotnet_targeting_pack dotnet-apphost-pack-7.0 %{runtime_rpm_version} Microsoft.NETCore.App 7.0 Microsoft.NETCore.App.Host.%{runtime_id}
+%dotnet_targeting_pack dotnet-targeting-pack-7.0 %{runtime_rpm_version} Microsoft.NETCore.App 7.0 Microsoft.NETCore.App.Ref
+%dotnet_targeting_pack aspnetcore-targeting-pack-7.0 %{aspnetcore_runtime_rpm_version} Microsoft.AspNetCore.App 7.0 Microsoft.AspNetCore.App.Ref
 %dotnet_targeting_pack netstandard-targeting-pack-2.1 %{sdk_rpm_version} NETStandard.Library 2.1 NETStandard.Library.Ref
 
 
-%package -n dotnet-sdk-6.0-source-built-artifacts
+%package -n dotnet-sdk-7.0-source-built-artifacts
 
 Version:        %{sdk_rpm_version}
-Summary:        Internal package for building .NET 6.0 Software Development Kit
+Summary:        Internal package for building .NET 7.0 Software Development Kit
 
-%description -n dotnet-sdk-6.0-source-built-artifacts
+%description -n dotnet-sdk-7.0-source-built-artifacts
 The .NET source-built archive is a collection of packages needed
 to build the .NET SDK itself.
 
@@ -363,10 +363,6 @@ sed -i 's|/usr/share/dotnet|%{_libdir}/dotnet|' src/runtime/src/native/corehost/
 %if ! %{use_bundled_libunwind}
 sed -i -E 's|( /p:BuildDebPackage=false)|\1 --cmakeargs -DCLR_CMAKE_USE_SYSTEM_LIBUNWIND=TRUE|' src/runtime/eng/SourceBuild.props
 %endif
-
-pushd src/runtime
-%patch1 -p1
-popd
 
 
 %build
@@ -429,13 +425,14 @@ VERBOSE=1 ./build.sh \
 %endif
     --online \
     -- \
+    /p:MinimalConsoleLogOutput=false \
+    /p:ContinueOnPrebuiltBaselineError=true \
+
 
 echo \
     /v:n \
-    /p:SkipPortableRuntimeBuild=true \
     /p:LogVerbosity=n \
-    /p:MinimalConsoleLogOutput=false \
-    /p:ContinueOnPrebuiltBaselineError=true \
+    /p:SkipPortableRuntimeBuild=true \
 
 
 sed -e 's|[@]LIBDIR[@]|%{_libdir}|g' %{SOURCE11} > dotnet.sh
@@ -540,33 +537,34 @@ export COMPlus_LTTng=0
 %dir %{_datadir}/bash-completion/completions
 %{_datadir}/bash-completion/completions/dotnet
 
-%files -n dotnet-hostfxr-6.0
+%files -n dotnet-hostfxr-7.0
 %dir %{_libdir}/dotnet/host/fxr
 %{_libdir}/dotnet/host/fxr/%{host_version}
 
-%files -n dotnet-runtime-6.0
+%files -n dotnet-runtime-7.0
 %dir %{_libdir}/dotnet/shared
 %dir %{_libdir}/dotnet/shared/Microsoft.NETCore.App
 %{_libdir}/dotnet/shared/Microsoft.NETCore.App/%{runtime_version}
 
-%files -n aspnetcore-runtime-6.0
+%files -n aspnetcore-runtime-7.0
 %dir %{_libdir}/dotnet/shared
 %dir %{_libdir}/dotnet/shared/Microsoft.AspNetCore.App
 %{_libdir}/dotnet/shared/Microsoft.AspNetCore.App/%{aspnetcore_runtime_version}
 
-%files -n dotnet-templates-6.0
+%files -n dotnet-templates-7.0
 %dir %{_libdir}/dotnet/templates
 %{_libdir}/dotnet/templates/%{templates_version}
 
-%files -n dotnet-sdk-6.0
+%files -n dotnet-sdk-7.0
 %dir %{_libdir}/dotnet/sdk
 %{_libdir}/dotnet/sdk/%{sdk_version}
 %dir %{_libdir}/dotnet/sdk-manifests
+%{_libdir}/dotnet/sdk-manifests/6.0.300
 %{_libdir}/dotnet/sdk-manifests/%{sdk_feature_band_version}
 %{_libdir}/dotnet/metadata
 %dir %{_libdir}/dotnet/packs
 
-%files -n dotnet-sdk-6.0-source-built-artifacts
+%files -n dotnet-sdk-7.0-source-built-artifacts
 %dir %{_libdir}/dotnet
 %{_libdir}/dotnet/source-built-artifacts
 

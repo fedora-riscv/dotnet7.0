@@ -118,8 +118,12 @@ fi
 if [ ! -f "${unmodified_tarball_name}.tar.gz" ]; then
     temp_dir=$(mktemp -d -p "$(pwd)")
     pushd "${temp_dir}"
-    git clone https://github.com/dotnet/installer --branch "${tag}" --depth 1
+    mkdir installer
     pushd installer
+    git init
+    git remote add origin https://github.com/dotnet/installer
+    git fetch --depth 1 origin "${tag}"
+    git checkout FETCH_HEAD
     git submodule update --init --recursive
     clean_dotnet_cache
     mkdir -p "../${unmodified_tarball_name}"
@@ -188,7 +192,7 @@ rm -r src/source-build-externals/src/humanizer/samples/
 popd
 
 if [[ ${build_bootstrap} == true ]]; then
-    tar -I 'xz -T 0' -cf "${tarball_name}${tarball_suffix}" "${tarball_name}"
+    tar -I 'xz -9 -T 0' -cf "${tarball_name}${tarball_suffix}" "${tarball_name}"
 else
     tar -czf "${tarball_name}${tarball_suffix}" "${tarball_name}"
 fi
