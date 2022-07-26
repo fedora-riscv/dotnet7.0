@@ -173,6 +173,11 @@ fi
 
 # Remove files with funny licenses, crypto implementations and other
 # not-very-useful artifacts to reduce tarball size
+#
+# We use rm -r (no -f) to make sure the operation fails if the files are not at
+# the expected locations. If the files are not at the expected location, we
+# need to find the new location of the files and delete them, or verify that
+# upstream has fix them.
 
 # Binaries for gradle
 rm -r src/aspnetcore/src/SignalR/clients/java/signalr/gradle*

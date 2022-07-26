@@ -21,12 +21,12 @@
           dir: ./
           run: dotnet turkey/Turkey.dll -l={{ remote_artifacts }} dotnet-regular-tests
     required_packages:
-    - aspnetcore-runtime-6.0
+    - aspnetcore-runtime-7.0
     - babeltrace
     - bash-completion
     - binutils
-    - dotnet-sdk-6.0
-    - dotnet-runtime-6.0
+    - dotnet-sdk-7.0
+    - dotnet-runtime-7.0
     - expect
     - git
     - jq

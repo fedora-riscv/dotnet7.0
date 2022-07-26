@@ -29,9 +29,9 @@ for package in "${linux_x64_packages[@]}"; do
     fi
 
     filename=${package##*/}
-    name=${filename%.6.0*}
+    name=${filename%.7.0*}
     arm_name=${name/linux-x64/linux-arm64}
-    version="6.0${filename##*6.0}"
+    version="7.0${filename##*6.0}"
     version=${version%.*}
 
     nappo download --verbose "$arm_name" "$version"
