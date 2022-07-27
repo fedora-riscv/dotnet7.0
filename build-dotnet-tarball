@@ -171,13 +171,15 @@ else
     rm -rf .dotnet
 fi
 
-# Remove files with funny licenses, crypto implementations and other
-# not-very-useful artifacts to reduce tarball size
+# Remove files with funny licenses and crypto implementations and
+# other not-very-useful artifacts. We MUST NOT ship any files that
+# have unapproved licenses and unexpected cryptographic
+# implementations.
 #
-# We use rm -r (no -f) to make sure the operation fails if the files are not at
-# the expected locations. If the files are not at the expected location, we
-# need to find the new location of the files and delete them, or verify that
-# upstream has fix them.
+# We use rm -r (no -f) to make sure the operation fails if the files
+# are not at the expected locations. If the files are not at the
+# expected location, we need to find the new location of the files and
+# delete them, or verify that upstream has already removed the files.
 
 # Binaries for gradle
 rm -r src/aspnetcore/src/SignalR/clients/java/signalr/gradle*
