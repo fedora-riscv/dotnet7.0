@@ -20,12 +20,12 @@
 # until that's done, disable LTO.  This has to happen before setting the flags below.
 %define _lto_cflags %{nil}
 
-%global host_version 7.0.0-rc.1.22367.4
-%global runtime_version 7.0.0-rc.1.22367.4
-%global aspnetcore_runtime_version 7.0.0-rc.1.22368.6
-%global sdk_version 7.0.100-rc.1.22372.1
+%global host_version 7.0.0-rc.1.22411.12
+%global runtime_version 7.0.0-rc.1.22411.12
+%global aspnetcore_runtime_version 7.0.0-rc.1.22412.2
+%global sdk_version 7.0.100-rc.1.22413.1
 %global sdk_feature_band_version %(echo %{sdk_version} | cut -d '-' -f 1 | sed -e 's|[[:digit:]][[:digit:]]$|00|')
-%global templates_version 7.0.0-rc.1.22368.6
+%global templates_version 7.0.0-rc.1.22412.2
 #%%global templates_version %%(echo %%{runtime_version} | awk 'BEGIN { FS="."; OFS="." } {print $1, $2, $3+1 }')
 
 %global host_rpm_version 7.0.0
@@ -35,7 +35,7 @@
 
 # upstream can update releases without revving the SDK version so these don't always match
 #%%global upstream_tag v%%{sdk_version}
-%global upstream_tag ace7452f3bc6801cf4c4b5745b777c60e9e496a7
+%global upstream_tag fd587269d0a1fa669d547f3a2e74f5d9353b6dcf
 
 %if 0%{?fedora} || 0%{?rhel} < 8
 %global use_bundled_libunwind 0
@@ -134,6 +134,7 @@ applications and micro-services.
 framework libraries, an SDK containing compilers and a 'dotnet'
 application to drive everything.
 
+%if 0%{?rhel} <= 8
 
 %package -n dotnet
 
@@ -153,6 +154,7 @@ applications and micro-services.
 framework libraries, an SDK containing compilers and a 'dotnet'
 application to drive everything.
 
+%endif
 
 %package -n dotnet-host
 
@@ -374,7 +376,7 @@ cp -a %{_libdir}/dotnet previously-built-dotnet
 find previously-built-dotnet
 %endif
 
-%if 0%{?fedora} > 32 || 0%{?rhel} > 8
+%if 0%{?fedora} || 0%{?rhel} >= 9
 # Setting this macro ensures that only clang supported options will be
 # added to ldflags and cflags.
 %global toolchain clang
@@ -415,23 +417,31 @@ export EXTRA_LDFLAGS="$LDFLAGS"
 # suggested compile-time change doesn't work, unfortunately.
 export COMPlus_LTTng=0
 
+%if 0%{?rhel} >= 9
+# OpenSSL 3.0 in RHEL 9 has disabled SHA1, used by .NET for strong
+# name signing. See https://github.com/dotnet/runtime/issues/67304
+# https://gitlab.com/redhat/centos-stream/rpms/openssl/-/commit/78fb78d30755ae18fdaef28ef392f4e67c662ff6
+export OPENSSL_ENABLE_SHA1_SIGNATURES=1
+%endif
 
-# FIXME: Remove --online flag
+%if 0%{?rhel} >= 0
+# See https://github.com/dotnet/source-build/issues/2991
+export DOTNET_NUGET_SIGNATURE_VERIFICATION=false
+%endif
 
 VERBOSE=1 ./build.sh \
 %if %{without bootstrap}
     --with-sdk previously-built-dotnet \
     --with-packages %{_libdir}/dotnet/source-built-artifacts/Private.SourceBuilt.Artifacts.*.tar.gz
 %endif
-    --online \
     -- \
     /p:MinimalConsoleLogOutput=false \
     /p:ContinueOnPrebuiltBaselineError=true \
+    /v:n \
+    /p:LogVerbosity=n \
 
 
 echo \
-    /v:n \
-    /p:LogVerbosity=n \
     /p:SkipPortableRuntimeBuild=true \
 
 
@@ -518,8 +528,10 @@ export COMPlus_LTTng=0
 %{buildroot}%{_libdir}/dotnet/dotnet --version
 
 
+%if 0%{?rhel} <= 8
 %files -n dotnet
 # empty package useful for dependencies
+%endif
 
 %files -n dotnet-host
 %dir %{_libdir}/dotnet

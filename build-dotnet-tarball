@@ -150,22 +150,7 @@ mv "${unmodified_tarball_name}" "${tarball_name}"
 pushd "${tarball_name}"
 
 if [[ ${build_bootstrap} == true ]]; then
-    if [[ "$(wc -l < packages/archive/archiveArtifacts.txt)" != 1 ]]; then
-        echo "error: this is not going to work! update $0 to fix this issue."
-        exit 1
-    fi
-
     ./prep.sh --bootstrap
-
-    mkdir -p fixup-previously-source-built-artifacts
-    pushd fixup-previously-source-built-artifacts
-    tar xf ../packages/archive/Private.SourceBuilt.Artifacts.*.tar.gz
-    find . -iname '*fedora*nupkg' -delete
-    # We must keep the original file names in the archive, even prepending a ./ leads to issues
-    tar -I 'gzip -1' -cf ../packages/archive/Private.SourceBuilt.Artifacts.*.tar.gz *
-    popd
-    rm -rf fixup-previously-source-built-artifacts
-
 else
     find . -type f -iname '*.tar.gz' -delete
     rm -rf .dotnet
@@ -195,6 +180,9 @@ rm -r src/nuget-client/test/EndToEnd
 
 # https://github.com/Humanizr/sample-aspnetmvc/issues/1
 rm -r src/source-build-externals/src/humanizer/samples/
+
+# https://github.com/dotnet/roslyn/issues/63257
+rm -r src/roslyn/scripts/GenerateSdkPackages
 
 popd
 

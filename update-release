@@ -81,10 +81,16 @@ sed -i -E "s|^%global runtime_version [[:digit:]]\.[[:digit:]]\.[[:digit:]]+|%gl
 sed -i -E "s|^%global sdk_version [[:digit:]]\.[[:digit:]]\.[[:digit:]][[:digit:]][[:digit:]]|%global sdk_version ${sdk_version}|" "$spec_file"
 
 comment="Update to .NET SDK ${sdk_version} and Runtime ${runtime_version}"
+commit_message="$comment
+"
 for bug_id in "${bug_ids[@]}"; do
     comment="$comment
 - Resolves: RHBZ#$bug_id"
+    commit_message="$commit_message
+Resolves: RHBZ#$bug_id"
 done
+
+echo "$commit_message" > git-commit-message
 
 rpmdev-bumpspec --comment="$comment" "$spec_file"
 
