@@ -424,7 +424,7 @@ export COMPlus_LTTng=0
 export OPENSSL_ENABLE_SHA1_SIGNATURES=1
 %endif
 
-%if 0%{?rhel} >= 0
+%if 0%{?rhel}
 # See https://github.com/dotnet/source-build/issues/2991
 export DOTNET_NUGET_SIGNATURE_VERIFICATION=false
 %endif
