@@ -4,6 +4,17 @@ set -euo pipefail
 
 set -x
 
+function parse-nuget-name-version-from-file() {
+    package=$1
+    filename=${package##*/}
+
+    version_suffix=$(echo "$filename" | grep -Eo '\.[[:digit:]]+.*\.nupkg')
+    version=$(echo "$version_suffix" | sed -Ee 's/^\.//' -e 's/\.nupkg$//')
+    name=${filename:0:(${#filename}-${#version_suffix})}
+
+    echo "$name" "$version"
+}
+
 bootstrap_dir=$(readlink -f "$1")
 
 version=$(jq -r  '.tools.dotnet' "$bootstrap_dir"/global.json)
@@ -14,28 +25,25 @@ mkdir -p "dotnet-arm64-prebuilts-$date"
 
 pushd "dotnet-arm64-prebuilts-$date"
 
-# Getting the exact matching rc2 version gets us an arm64 build without this
-# fix https://github.com/dotnet/runtime/pull/58959. That causes a segfault on
-# startup.
-# wget "https://dotnetcli.azureedge.net/dotnet/Sdk/$version/dotnet-sdk-$version-linux-arm64.tar.gz"
+# Binaries can be at one of several different URLs:
+# wget https://dotnetcli.azureedge.net/dotnet/Sdk/$version/dotnet-sdk-$version-linux-arm64.tar.gz
+wget https://dotnetbuilds.azureedge.net/public/Sdk/$version/dotnet-sdk-$version-linux-arm64.tar.gz
 
-wget https://aka.ms/dotnet/6.0.1XX-rc2/daily/dotnet-sdk-linux-arm64.tar.gz
+for archive in "$bootstrap_dir"/packages/archive/*.tar.gz; do
+    mapfile -t linux_x64_packages < <(tar tf "$archive" | grep linux-x64)
 
-mapfile -t linux_x64_packages < <(tar tf "$bootstrap_dir"/packages/archive/Private.SourceBuilt.Artifacts.*.tar.gz | grep linux-x64)
+    for package in "${linux_x64_packages[@]}"; do
+        if [[ "$package" = *'.Intermediate.'* ]]; then
+            continue;
+        fi
 
-for package in "${linux_x64_packages[@]}"; do
-    if [[ "$package" = *'.Intermediate.'* ]]; then
-        continue;
-    fi
+        read -r name version < <(parse-nuget-name-version-from-file "$package")
 
-    filename=${package##*/}
-    name=${filename%.7.0*}
-    arm_name=${name/linux-x64/linux-arm64}
-    version="7.0${filename##*6.0}"
-    version=${version%.*}
+        arm_name=${name/linux-x64/linux-arm64}
 
-    nappo download --verbose "$arm_name" "$version"
+        nappo download --verbose "$arm_name" "$version"
 
+    done
 done
 
 popd

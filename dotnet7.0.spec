@@ -71,7 +71,7 @@ URL:            https://github.com/dotnet/
 # ./build-dotnet-tarball --bootstrap %%{upstream_tag}
 Source0:        dotnet-%{upstream_tag}-x64-bootstrap.tar.xz
 # Generated via ./build-arm64-bootstrap-tarball
-Source1:        dotnet-arm64-prebuilts-2021-10-29.tar.gz
+Source1:        dotnet-arm64-prebuilts-2022-08-17.tar.gz
 # Generated manually, same pattern as the arm64 tarball
 Source2:        dotnet-s390x-prebuilts-2021-10-29.tar.gz
 %else
@@ -87,7 +87,7 @@ Source11:       dotnet.sh.in
 %if 0%{?fedora} || 0%{?rhel} >= 8
 # FIXME
 # ExclusiveArch:  aarch64 x86_64 s390x
-ExclusiveArch:  x86_64
+ExclusiveArch:  aarch64 x86_64
 %else
 ExclusiveArch:  x86_64
 %endif
