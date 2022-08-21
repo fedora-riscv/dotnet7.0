@@ -1,19 +1,5 @@
 %bcond_without bootstrap
 
-# Avoid provides/requires from private libraries
-%global privlibs             libhostfxr
-%global privlibs %{privlibs}|libclrjit
-%global privlibs %{privlibs}|libcoreclr
-%global privlibs %{privlibs}|libcoreclrtraceptprovider
-%global privlibs %{privlibs}|libdbgshim
-%global privlibs %{privlibs}|libhostpolicy
-%global privlibs %{privlibs}|libmscordaccore
-%global privlibs %{privlibs}|libmscordbi
-%global privlibs %{privlibs}|libsos
-%global privlibs %{privlibs}|libsosplugin
-%global __provides_exclude ^(%{privlibs})\\.so
-%global __requires_exclude ^(%{privlibs})\\.so
-
 # LTO triggers a compilation error for a source level issue.  Given that LTO should not
 # change the validity of any given source and the nature of the error (undefined enum), I
 # suspect a generator program is mis-behaving in some way.  This needs further debugging,
@@ -122,6 +108,25 @@ BuildRequires:  python3
 BuildRequires:  tar
 BuildRequires:  util-linux
 BuildRequires:  zlib-devel
+
+# Avoid generating provides and requires for private libraries
+%global privlibs             libhostfxr
+%global privlibs %{privlibs}|libclrgc
+%global privlibs %{privlibs}|libclrjit
+%global privlibs %{privlibs}|libcoreclr
+%global privlibs %{privlibs}|libcoreclrtraceptprovider
+%global privlibs %{privlibs}|libhostpolicy
+%global privlibs %{privlibs}|libmscordaccore
+%global privlibs %{privlibs}|libmscordbi
+%global privlibs %{privlibs}|libnethost
+%global privlibs %{privlibs}|libSystem.Globalization.Native
+%global privlibs %{privlibs}|libSystem.IO.Compression.Native
+%global privlibs %{privlibs}|libSystem.Native
+%global privlibs %{privlibs}|libSystem.Net.Security.Native
+%global privlibs %{privlibs}|libSystem.Security.Cryptography.Native.OpenSsl
+%global __provides_exclude ^(%{privlibs})\\.so
+%global __requires_exclude ^(%{privlibs})\\.so
+
 
 %description
 .NET is a fast, lightweight and modular platform for creating
