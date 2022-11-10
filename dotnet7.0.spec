@@ -647,7 +647,7 @@ export COMPlus_LTTng=0
 
 
 %changelog
-* Thu Nov 09 2022 Omair Majid <omajid@redhat.com> - 7.0.100-0.1
+* Thu Nov 10 2022 Omair Majid <omajid@redhat.com> - 7.0.100-0.1
 - Update to .NET 7 RC 2
 
 * Wed May 11 2022 Omair Majid <omajid@redhat.com> - 6.0.105-1
