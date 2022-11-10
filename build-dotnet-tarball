@@ -141,10 +141,7 @@ fi
 
 rm -rf "${tarball_name}"
 
-mkdir -p "${unmodified_tarball_name}"
-pushd "${unmodified_tarball_name}"
-tar xf ../"${unmodified_tarball_name}.tar.gz"
-popd
+tar xf "${unmodified_tarball_name}.tar.gz"
 mv "${unmodified_tarball_name}" "${tarball_name}"
 
 pushd "${tarball_name}"
@@ -178,11 +175,8 @@ rm -r src/runtime/src/tests/JIT/Performance/CodeQuality/Bytemark/
 # https://github.com/NuGet/Home/issues/11094
 rm -r src/nuget-client/test/EndToEnd
 
-# https://github.com/Humanizr/sample-aspnetmvc/issues/1
-rm -r src/source-build-externals/src/humanizer/samples/
-
-# https://github.com/dotnet/roslyn/issues/63257
-rm -r src/roslyn/scripts/GenerateSdkPackages
+# https://github.com/microsoft/ApplicationInsights-dotnet/issues/2670
+rm -r src/source-build-externals/src/application-insights/LOGGING/test/Shared/CustomTelemetryChannel.cs
 
 popd
 

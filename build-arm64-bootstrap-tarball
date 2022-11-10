@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Usage:
+#   ./build-arm64-bootstrap-tarball <bootstrap-dir> [SDK-version]
+
 set -euo pipefail
 
 set -x
@@ -17,7 +20,7 @@ function parse-nuget-name-version-from-file() {
 
 bootstrap_dir=$(readlink -f "$1")
 
-version=$(jq -r  '.tools.dotnet' "$bootstrap_dir"/global.json)
+version=${2:-$(jq -r  '.tools.dotnet' "$bootstrap_dir"/global.json)}
 
 date=$(date +%F)
 
@@ -26,8 +29,8 @@ mkdir -p "dotnet-arm64-prebuilts-$date"
 pushd "dotnet-arm64-prebuilts-$date"
 
 # Binaries can be at one of several different URLs:
-# wget https://dotnetcli.azureedge.net/dotnet/Sdk/$version/dotnet-sdk-$version-linux-arm64.tar.gz
-wget https://dotnetbuilds.azureedge.net/public/Sdk/$version/dotnet-sdk-$version-linux-arm64.tar.gz
+wget https://dotnetcli.azureedge.net/dotnet/Sdk/$version/dotnet-sdk-$version-linux-arm64.tar.gz
+#wget https://dotnetbuilds.azureedge.net/public/Sdk/$version/dotnet-sdk-$version-linux-arm64.tar.gz
 
 for archive in "$bootstrap_dir"/packages/archive/*.tar.gz; do
     mapfile -t linux_x64_packages < <(tar tf "$archive" | grep linux-x64)
@@ -41,6 +44,7 @@ for archive in "$bootstrap_dir"/packages/archive/*.tar.gz; do
 
         arm_name=${name/linux-x64/linux-arm64}
 
+        # https://gist.github.com/omajid/c04b6025de49d0b7b18ab4a7e789484e
         nappo download --verbose "$arm_name" "$version"
 
     done

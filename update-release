@@ -1,18 +1,19 @@
 #!/bin/bash
 
 # Usage:
-#     ./update-release sdk-version runtime-version [--bug bug-id] [--tarball tarball-name]
+#     ./update-release sdk-version runtime-version [--bug bug-id] [--tarball tarball-name] [--larger-rpm-release]
 
 set -euo pipefail
 IFS=$'\n\t'
 
 print_usage() {
     echo " Usage:"
-    echo "     ./update-release sdk-version runtime-version [--bug bug-id] [--tarball tarball-name]"
+    echo "     ./update-release sdk-version runtime-version [--bug bug-id] [--tarball tarball-name] [--larger-rpm-release]"
 }
 
 user_provided_tarball_name=""
 
+rpm_release=1
 positional_args=()
 bug_ids=()
 while [[ "$#" -gt 0 ]]; do
@@ -30,6 +31,10 @@ while [[ "$#" -gt 0 ]]; do
         --tarball)
             user_provided_tarball_name="$2"
             shift;
+            shift;
+            ;;
+        --larger-rpm-release)
+            rpm_release="2"
             shift;
             ;;
         *)
@@ -56,13 +61,19 @@ fi
 
 host_version="$runtime_version"
 
-tag=v${sdk_version}
+if [[ "$runtime_version" == "3.1"* ]]; then
+    tag=v${sdk_version}-SDK
+else
+    tag=v${sdk_version}
+fi
 
 if [[ -f "dotnet-${tag}-original.tar.gz" ]]; then
     echo "dotnet-${tag}-original.tar.gz alredy exists, not rebuilding tarball"
 else
     if [[ -n "${user_provided_tarball_name}" ]]; then
         ./rename-tarball "$user_provided_tarball_name" "dotnet-${tag}-original.tar.gz"
+    elif [[ -f "dotnet-${sdk_version}-SDK.tar.gz" ]]; then
+        ./rename-tarball "dotnet-${sdk_version}-SDK.tar.gz" "dotnet-${tag}-original.tar.gz"
     elif [[ -f "dotnet-${sdk_version}.tar.gz" ]]; then
         ./rename-tarball "dotnet-${sdk_version}.tar.gz" "dotnet-${tag}-original.tar.gz"
     elif [[ -f "dotnet-${runtime_version}.tar.gz" ]]; then
@@ -94,8 +105,8 @@ echo "$commit_message" > git-commit-message
 
 rpmdev-bumpspec --comment="$comment" "$spec_file"
 
-# Reset release to 1 in 'Release' tag
-sed -i -E 's|^Release:        [[:digit:]]+%|Release:        1%|' "$spec_file"
+# Reset release in 'Release' tag
+sed -i -E 's|^Release:        [[:digit:]]+%|Release:        '"$rpm_release"'%|' "$spec_file"
 # Reset Release in changelog comment
 # See https://stackoverflow.com/questions/18620153/find-matching-text-and-replace-next-line
-sed -i -E '/^%changelog$/!b;n;s/-[[:digit:]]+$/-1/' "$spec_file"
+sed -i -E '/^%changelog$/!b;n;s/-[[:digit:]]+$/-'"$rpm_release"'/' "$spec_file"

@@ -1,0 +1,37 @@
+From 7ea33be2e1949d9c63ff58b59deb5b1a84105aae Mon Sep 17 00:00:00 2001
+From: Giridhar Trivedi <giridhar.trivedi@ibm.com>
+Date: Wed, 12 Oct 2022 14:14:40 +0200
+Subject: [PATCH] Fix Invalid target architecture 'S390x' error
+
+In commit 3ae5c4aef823 ("Add support for s390x processor architecture")
+support for S390x architecture was provided for .NET6. This is broken
+in .NET7. Add missing case statements to fix this for S390x and also
+Power architectures.
+---
+ .../Hosting/DotnetTestHostManager.cs                        | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/src/vstest/src/Microsoft.TestPlatform.TestHostProvider/Hosting/DotnetTestHostManager.cs b/src/vstest/src/Microsoft.TestPlatform.TestHostProvider/Hosting/DotnetTestHostManager.cs
+index b4fa53776f..deadfcb684 100644
+--- a/src/vstest/src/Microsoft.TestPlatform.TestHostProvider/Hosting/DotnetTestHostManager.cs
++++ b/src/vstest/src/Microsoft.TestPlatform.TestHostProvider/Hosting/DotnetTestHostManager.cs
+@@ -536,6 +536,10 @@ PlatformArchitecture TranslateToPlatformArchitecture(Architecture targetArchitec
+                     return PlatformArchitecture.ARM;
+                 case Architecture.ARM64:
+                     return PlatformArchitecture.ARM64;
++                case Architecture.S390x:
++                    return PlatformArchitecture.S390x;
++                case Architecture.Ppc64le:
++                    return PlatformArchitecture.Ppc64le;
+                 case Architecture.AnyCPU:
+                 case Architecture.Default:
+                 default:
+@@ -552,6 +556,8 @@ static bool IsSameArchitecture(Architecture targetArchitecture, PlatformArchitec
+                 Architecture.X64 => platformAchitecture == PlatformArchitecture.X64,
+                 Architecture.ARM => platformAchitecture == PlatformArchitecture.ARM,
+                 Architecture.ARM64 => platformAchitecture == PlatformArchitecture.ARM64,
++                Architecture.S390x => platformAchitecture == PlatformArchitecture.S390x,
++                Architecture.Ppc64le => platformAchitecture == PlatformArchitecture.Ppc64le,
+                 _ => throw new TestPlatformException($"Invalid target architecture '{targetArchitecture}'"),
+             };
+ 

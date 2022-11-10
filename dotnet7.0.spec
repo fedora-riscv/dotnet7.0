@@ -6,12 +6,12 @@
 # until that's done, disable LTO.  This has to happen before setting the flags below.
 %define _lto_cflags %{nil}
 
-%global host_version 7.0.0-rc.1.22411.12
-%global runtime_version 7.0.0-rc.1.22411.12
-%global aspnetcore_runtime_version 7.0.0-rc.1.22412.2
-%global sdk_version 7.0.100-rc.1.22413.1
+%global host_version 7.0.0-rc.2.22472.3
+%global runtime_version 7.0.0-rc.2.22472.3
+%global aspnetcore_runtime_version 7.0.0-rc.2.22476.2
+%global sdk_version 7.0.100-rc.2.22511.1
 %global sdk_feature_band_version %(echo %{sdk_version} | cut -d '-' -f 1 | sed -e 's|[[:digit:]][[:digit:]]$|00|')
-%global templates_version 7.0.0-rc.1.22412.2
+%global templates_version 7.0.0-rc.2.22476.2
 #%%global templates_version %%(echo %%{runtime_version} | awk 'BEGIN { FS="."; OFS="." } {print $1, $2, $3+1 }')
 
 %global host_rpm_version 7.0.0
@@ -21,7 +21,7 @@
 
 # upstream can update releases without revving the SDK version so these don't always match
 #%%global upstream_tag v%%{sdk_version}
-%global upstream_tag fd587269d0a1fa669d547f3a2e74f5d9353b6dcf
+%global upstream_tag v7.0.100-rc.2.22477.23
 
 %if 0%{?fedora} || 0%{?rhel} < 8
 %global use_bundled_libunwind 0
@@ -29,19 +29,24 @@
 %global use_bundled_libunwind 1
 %endif
 
-%ifarch aarch64 s390x
+%ifarch aarch64 ppc64le s390x
 %global use_bundled_libunwind 1
 %endif
 
-%ifarch x86_64
-%global runtime_arch x64
-%endif
 %ifarch aarch64
 %global runtime_arch arm64
+%endif
+%ifarch ppc64le
+%global runtime_arch ppc64le
 %endif
 %ifarch s390x
 %global runtime_arch s390x
 %endif
+%ifarch x86_64
+%global runtime_arch x64
+%endif
+
+%global mono_archs s390x ppc64le
 
 %{!?runtime_id:%global runtime_id %(. /etc/os-release ; echo "${ID}.${VERSION_ID%%.*}")-%{runtime_arch}}
 
@@ -57,9 +62,11 @@ URL:            https://github.com/dotnet/
 # ./build-dotnet-tarball --bootstrap %%{upstream_tag}
 Source0:        dotnet-%{upstream_tag}-x64-bootstrap.tar.xz
 # Generated via ./build-arm64-bootstrap-tarball
-Source1:        dotnet-arm64-prebuilts-2022-08-17.tar.gz
+Source1:        dotnet-arm64-prebuilts-2022-10-12.tar.gz
 # Generated manually, same pattern as the arm64 tarball
-Source2:        dotnet-s390x-prebuilts-2021-10-29.tar.gz
+Source2:        dotnet-ppc64le-prebuilts-2022-10-21.tar.gz
+# Generated manually, same pattern as the arm64 tarball
+Source3:        dotnet-s390x-prebuilts-2022-10-12.tar.gz
 %else
 # The source is generated on a Fedora box via:
 # ./build-dotnet-tarball %%{upstream_tag}
@@ -69,11 +76,30 @@ Source0:        dotnet-%{upstream_tag}.tar.gz
 Source10:       check-debug-symbols.py
 Source11:       dotnet.sh.in
 
+# https://github.com/dotnet/runtime/pull/76916
+Patch1:         runtime-76916-mono-s390x-opcheckthis.patch
+# https://github.com/microsoft/vstest/pull/4028
+Patch2:         vstest-4028-ppc64le.patch
+# https://github.com/microsoft/vstest/pull/4066
+Patch3:         vstest-4066-s390x-ppc64le.patch
+# https://github.com/dotnet/installer/pull/14631
+Patch4:         installer-14631-ppc64le.patch
+# https://github.com/dotnet/installer/pull/14792
+Patch5:         installer-14792-mono.patch
+# https://github.com/dotnet/aspnetcore/pull/44583
+Patch6:         aspnetcore-44583-ppc64le-crossgen.patch
+# https://github.com/dotnet/runtime/pull/77269
+Patch7:         runtime-77269-mono-ppc64le-opcheckthis.patch
+# https://github.com/dotnet/runtime/pull/77270
+Patch8:         runtime-77270-ppc64le-fsharp-crash.patch
+# https://github.com/dotnet/runtime/pull/77308
+Patch9:         runtime-77308-ppc64le-delegate.patch
+# Disable apphost; there's no net6.0 apphost for ppc64le
+Patch10:        roslyn-analyzers-ppc64le-apphost.patch
+
 
 %if 0%{?fedora} || 0%{?rhel} >= 8
-# FIXME
-# ExclusiveArch:  aarch64 x86_64 s390x
-ExclusiveArch:  aarch64 x86_64
+ExclusiveArch:  aarch64 ppc64le s390x x86_64
 %else
 ExclusiveArch:  x86_64
 %endif
@@ -100,6 +126,9 @@ BuildRequires:  libunwind-devel
 %ifarch aarch64
 BuildRequires:  lld
 %endif
+# If the build ever crashes, then having lldb installed might help the
+# runtime generate a backtrace for the crash
+BuildRequires:  lldb
 BuildRequires:  llvm
 BuildRequires:  lttng-ust-devel
 BuildRequires:  make
@@ -331,6 +360,20 @@ These are not meant for general use.
 %prep
 %if %{without bootstrap}
 %setup -q -n dotnet-%{upstream_tag}
+
+# Remove all prebuilts
+find -iname '*.dll' -type f -delete
+find -iname '*.so' -type f -delete
+find -iname '*.tar.gz' -type f -delete
+find -iname '*.nupkg' -type f -delete
+find -iname '*.zip' -type f -delete
+
+rm -rf .dotnet/
+rm -rf packages/source-built
+
+mkdir -p packages/archive
+ln -s %{_libdir}/dotnet/source-built-artifacts/Private.SourceBuilt.Artifacts.*.tar.gz packages/archive/
+
 %else
 
 %setup -q -T -b 0 -n dotnet-%{upstream_tag}-x64-bootstrap
@@ -341,28 +384,48 @@ rm -rf .dotnet
 %ifarch aarch64
 tar -x --strip-components=1 -f %{SOURCE1} -C packages/prebuilt
 %endif
-%ifarch s390x
+%ifarch ppc64le
 tar -x --strip-components=1 -f %{SOURCE2} -C packages/prebuilt
 %endif
+%ifarch s390x
+tar -x --strip-components=1 -f %{SOURCE3} -C packages/prebuilt
+%endif
+
 mkdir -p .dotnet
 tar xf packages/prebuilt/dotnet-sdk*.tar.gz -C .dotnet/
 rm packages/prebuilt/dotnet-sdk*.tar.gz
+
 boot_sdk_version=$(ls -1 .dotnet/sdk/)
 sed -i -E 's|"dotnet": "[^"]+"|"dotnet" : "'$boot_sdk_version'"|' global.json
+
+%ifarch ppc64le s390x
+ilasm_version=$(ls packages/prebuilt| grep -i ilasm | tr 'A-Z' 'a-z' | sed -E 's|runtime.linux-'%{runtime_arch}'.microsoft.netcore.ilasm.||' | sed -E 's|.nupkg$||')
+echo $ilasm_version
+
+mkdir -p packages-customized-local
+pushd packages-customized-local
+tar xf ../packages/archive/Private.SourceBuilt.Artifacts.*.tar.gz
+sed -i -E 's|<MicrosoftNETCoreILAsmVersion>[^<]+</MicrosoftNETCoreILAsmVersion>|<MicrosoftNETCoreILAsmVersion>'$ilasm_version'</MicrosoftNETCoreILAsmVersion>|' PackageVersions.props
+sed -i -E 's|<MicrosoftNETCoreILDAsmVersion>[^<]+</MicrosoftNETCoreILDAsmVersion>|<MicrosoftNETCoreILDAsmVersion>'$ilasm_version'</MicrosoftNETCoreILDAsmVersion>|' PackageVersions.props
+tar czf ../packages/archive/Private.SourceBuilt.Artifacts.*.tar.gz *
+popd
+
+%endif
+
 %endif
 
 %endif
 
-%if %{without bootstrap}
-# Remove all prebuilts
-find -iname '*.dll' -type f -delete
-find -iname '*.so' -type f -delete
-find -iname '*.tar.gz' -type f -delete
-find -iname '*.nupkg' -type f -delete
-find -iname '*.zip' -type f -delete
-rm -rf .dotnet/
-rm -rf packages/source-built
-%endif
+%patch1 -p1
+%patch2 -p1
+%patch3 -p1
+%patch4 -p1
+%patch5 -p1
+%patch6 -p1
+%patch7 -p1
+%patch8 -p1
+%patch9 -p1
+%patch10 -p1
 
 # Fix bad hardcoded path in build
 sed -i 's|/usr/share/dotnet|%{_libdir}/dotnet|' src/runtime/src/native/corehost/hostmisc/pal.unix.cpp
@@ -429,15 +492,12 @@ export COMPlus_LTTng=0
 export OPENSSL_ENABLE_SHA1_SIGNATURES=1
 %endif
 
-%if 0%{?rhel}
-# See https://github.com/dotnet/source-build/issues/2991
-export DOTNET_NUGET_SIGNATURE_VERIFICATION=false
-%endif
-
 VERBOSE=1 ./build.sh \
 %if %{without bootstrap}
     --with-sdk previously-built-dotnet \
-    --with-packages %{_libdir}/dotnet/source-built-artifacts/Private.SourceBuilt.Artifacts.*.tar.gz
+%endif
+%ifarch %{mono_archs}
+    --use-mono-runtime \
 %endif
     -- \
     /p:MinimalConsoleLogOutput=false \
@@ -576,8 +636,8 @@ export COMPlus_LTTng=0
 %dir %{_libdir}/dotnet/sdk
 %{_libdir}/dotnet/sdk/%{sdk_version}
 %dir %{_libdir}/dotnet/sdk-manifests
-%{_libdir}/dotnet/sdk-manifests/6.0.300
 %{_libdir}/dotnet/sdk-manifests/%{sdk_feature_band_version}
+%{_libdir}/dotnet/sdk-manifests/%{sdk_feature_band_version}-rc.1
 %{_libdir}/dotnet/metadata
 %dir %{_libdir}/dotnet/packs
 
@@ -587,6 +647,9 @@ export COMPlus_LTTng=0
 
 
 %changelog
+* Thu Nov 09 2022 Omair Majid <omajid@redhat.com> - 7.0.100-0.1
+- Update to .NET 7 RC 2
+
 * Wed May 11 2022 Omair Majid <omajid@redhat.com> - 6.0.105-1
 - Update to .NET SDK 6.0.105 and Runtime 6.0.5
 
