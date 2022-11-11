@@ -96,6 +96,9 @@ Patch8:         runtime-77270-ppc64le-fsharp-crash.patch
 Patch9:         runtime-77308-ppc64le-delegate.patch
 # Disable apphost; there's no net6.0 apphost for ppc64le
 Patch10:        roslyn-analyzers-ppc64le-apphost.patch
+# Fix ppc64le build with clang 15
+# TODO upstream this
+Patch11:        runtime-mono-ppc64le-clang15.patch
 
 
 %if 0%{?fedora} || 0%{?rhel} >= 8
@@ -426,6 +429,7 @@ popd
 %patch8 -p1
 %patch9 -p1
 %patch10 -p1
+%patch11 -p1
 
 # Fix bad hardcoded path in build
 sed -i 's|/usr/share/dotnet|%{_libdir}/dotnet|' src/runtime/src/native/corehost/hostmisc/pal.unix.cpp
