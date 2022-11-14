@@ -6,6 +6,8 @@
 # until that's done, disable LTO.  This has to happen before setting the flags below.
 %define _lto_cflags %{nil}
 
+%global dotnetver 7.0
+
 %global host_version 7.0.0-rc.2.22472.3
 %global runtime_version 7.0.0-rc.2.22472.3
 %global aspnetcore_runtime_version 7.0.0-rc.2.22476.2
@@ -17,7 +19,7 @@
 %global host_rpm_version 7.0.0
 %global runtime_rpm_version 7.0.0
 %global aspnetcore_runtime_rpm_version 7.0.0
-%global sdk_rpm_version 7.0.0
+%global sdk_rpm_version 7.0.100
 
 # upstream can update releases without revving the SDK version so these don't always match
 #%%global upstream_tag v%%{sdk_version}
@@ -50,9 +52,9 @@
 
 %{!?runtime_id:%global runtime_id %(. /etc/os-release ; echo "${ID}.${VERSION_ID%%.*}")-%{runtime_arch}}
 
-Name:           dotnet7.0
+Name:           dotnet%{dotnetver}
 Version:        %{sdk_rpm_version}
-Release:        0.1%{?dist}
+Release:        0%{?dist}.1
 Summary:        .NET Runtime and SDK
 License:        MIT and ASL 2.0 and BSD and LGPLv2+ and CC-BY and CC0 and MS-PL and EPL-1.0 and GPL+ and GPLv2 and ISC and OFL and zlib
 URL:            https://github.com/dotnet/
@@ -112,8 +114,8 @@ BuildRequires:  clang
 BuildRequires:  cmake
 BuildRequires:  coreutils
 %if %{without bootstrap}
-BuildRequires:  dotnet-sdk-7.0
-BuildRequires:  dotnet-sdk-7.0-source-built-artifacts
+BuildRequires:  dotnet-sdk-%{dotnetver}
+BuildRequires:  dotnet-sdk-%{dotnetver}-source-built-artifacts
 %endif
 BuildRequires:  findutils
 BuildRequires:  git
@@ -178,7 +180,7 @@ application to drive everything.
 Version:        %{sdk_rpm_version}
 Summary:        .NET CLI tools and runtime
 
-Requires:       dotnet-sdk-7.0%{?_isa} >= %{sdk_rpm_version}-%{release}
+Requires:       dotnet-sdk-%{dotnetver}%{?_isa} >= %{sdk_rpm_version}-%{release}
 
 %description -n dotnet
 .NET is a fast, lightweight and modular platform for creating
@@ -209,7 +211,7 @@ It particularly focuses on creating console applications, web
 applications and micro-services.
 
 
-%package -n dotnet-hostfxr-7.0
+%package -n dotnet-hostfxr-%{dotnetver}
 
 Version:        %{host_rpm_version}
 Summary:        .NET command line host resolver
@@ -218,7 +220,7 @@ Summary:        .NET command line host resolver
 # provided by this package, or from a newer version of .NET
 Requires:       dotnet-host%{?_isa} >= %{host_rpm_version}-%{release}
 
-%description -n dotnet-hostfxr-7.0
+%description -n dotnet-hostfxr-%{dotnetver}
 The .NET host resolver contains the logic to resolve and select
 the right version of the .NET SDK or runtime to use.
 
@@ -229,12 +231,12 @@ It particularly focuses on creating console applications, web
 applications and micro-services.
 
 
-%package -n dotnet-runtime-7.0
+%package -n dotnet-runtime-%{dotnetver}
 
 Version:        %{runtime_rpm_version}
-Summary:        NET 7.0 runtime
+Summary:        NET %{dotnetver} runtime
 
-Requires:       dotnet-hostfxr-7.0%{?_isa} >= %{host_rpm_version}-%{release}
+Requires:       dotnet-hostfxr-%{dotnetver}%{?_isa} >= %{host_rpm_version}-%{release}
 
 # libicu is dlopen()ed
 Requires:       libicu%{?_isa}
@@ -246,7 +248,7 @@ Provides: bundled(libbrotli) = 1.0.9
 Provides: bundled(libunwind) = 1.5.rc1.28.g9165d2a1
 %endif
 
-%description -n dotnet-runtime-7.0
+%description -n dotnet-runtime-%{dotnetver}
 The .NET runtime contains everything needed to run .NET applications.
 It includes a high performance Virtual Machine as well as the framework
 libraries used by .NET applications.
@@ -258,14 +260,14 @@ It particularly focuses on creating console applications, web
 applications and micro-services.
 
 
-%package -n aspnetcore-runtime-7.0
+%package -n aspnetcore-runtime-%{dotnetver}
 
 Version:        %{aspnetcore_runtime_rpm_version}
-Summary:        ASP.NET Core 7.0 runtime
+Summary:        ASP.NET Core %{dotnetver} runtime
 
-Requires:       dotnet-runtime-7.0%{?_isa} = %{runtime_rpm_version}-%{release}
+Requires:       dotnet-runtime-%{dotnetver}%{?_isa} = %{runtime_rpm_version}-%{release}
 
-%description -n aspnetcore-runtime-7.0
+%description -n aspnetcore-runtime-%{dotnetver}
 The ASP.NET Core runtime contains everything needed to run .NET
 web applications. It includes a high performance Virtual Machine as
 well as the framework libraries used by .NET applications.
@@ -277,16 +279,16 @@ It particularly focuses on creating console applications, web
 applications and micro-services.
 
 
-%package -n dotnet-templates-7.0
+%package -n dotnet-templates-%{dotnetver}
 
 Version:        %{sdk_rpm_version}
-Summary:        .NET 7.0 templates
+Summary:        .NET %{dotnetver} templates
 
 # Theoretically any version of the host should work. But lets aim for the one
 # provided by this package, or from a newer version of .NET
 Requires:       dotnet-host%{?_isa} >= %{host_rpm_version}-%{release}
 
-%description -n dotnet-templates-7.0
+%description -n dotnet-templates-%{dotnetver}
 This package contains templates used by the .NET SDK.
 
 .NET is a fast, lightweight and modular platform for creating
@@ -296,24 +298,24 @@ It particularly focuses on creating console applications, web
 applications and micro-services.
 
 
-%package -n dotnet-sdk-7.0
+%package -n dotnet-sdk-%{dotnetver}
 
 Version:        %{sdk_rpm_version}
-Summary:        .NET 7.0 Software Development Kit
+Summary:        .NET %{dotnetver} Software Development Kit
 
 Provides:       bundled(js-jquery)
 
-Requires:       dotnet-runtime-7.0%{?_isa} >= %{runtime_rpm_version}-%{release}
-Requires:       aspnetcore-runtime-7.0%{?_isa} >= %{aspnetcore_runtime_rpm_version}-%{release}
+Requires:       dotnet-runtime-%{dotnetver}%{?_isa} >= %{runtime_rpm_version}-%{release}
+Requires:       aspnetcore-runtime-%{dotnetver}%{?_isa} >= %{aspnetcore_runtime_rpm_version}-%{release}
 
-Requires:       dotnet-apphost-pack-7.0%{?_isa} >= %{runtime_rpm_version}-%{release}
-Requires:       dotnet-targeting-pack-7.0%{?_isa} >= %{runtime_rpm_version}-%{release}
-Requires:       aspnetcore-targeting-pack-7.0%{?_isa} >= %{aspnetcore_runtime_rpm_version}-%{release}
+Requires:       dotnet-apphost-pack-%{dotnetver}%{?_isa} >= %{runtime_rpm_version}-%{release}
+Requires:       dotnet-targeting-pack-%{dotnetver}%{?_isa} >= %{runtime_rpm_version}-%{release}
+Requires:       aspnetcore-targeting-pack-%{dotnetver}%{?_isa} >= %{aspnetcore_runtime_rpm_version}-%{release}
 Requires:       netstandard-targeting-pack-2.1%{?_isa} >= %{sdk_rpm_version}-%{release}
 
-Requires:       dotnet-templates-7.0%{?_isa} >= %{sdk_rpm_version}-%{release}
+Requires:       dotnet-templates-%{dotnetver}%{?_isa} >= %{sdk_rpm_version}-%{release}
 
-%description -n dotnet-sdk-7.0
+%description -n dotnet-sdk-%{dotnetver}
 The .NET SDK is a collection of command line applications to
 create, build, publish and run .NET applications.
 
@@ -342,18 +344,18 @@ applications using the .NET SDK.
 %{_libdir}/dotnet/packs/%{5}
 }
 
-%dotnet_targeting_pack dotnet-apphost-pack-7.0 %{runtime_rpm_version} Microsoft.NETCore.App 7.0 Microsoft.NETCore.App.Host.%{runtime_id}
-%dotnet_targeting_pack dotnet-targeting-pack-7.0 %{runtime_rpm_version} Microsoft.NETCore.App 7.0 Microsoft.NETCore.App.Ref
-%dotnet_targeting_pack aspnetcore-targeting-pack-7.0 %{aspnetcore_runtime_rpm_version} Microsoft.AspNetCore.App 7.0 Microsoft.AspNetCore.App.Ref
+%dotnet_targeting_pack dotnet-apphost-pack-%{dotnetver} %{runtime_rpm_version} Microsoft.NETCore.App %{dotnetver} Microsoft.NETCore.App.Host.%{runtime_id}
+%dotnet_targeting_pack dotnet-targeting-pack-%{dotnetver} %{runtime_rpm_version} Microsoft.NETCore.App %{dotnetver} Microsoft.NETCore.App.Ref
+%dotnet_targeting_pack aspnetcore-targeting-pack-%{dotnetver} %{aspnetcore_runtime_rpm_version} Microsoft.AspNetCore.App %{dotnetver} Microsoft.AspNetCore.App.Ref
 %dotnet_targeting_pack netstandard-targeting-pack-2.1 %{sdk_rpm_version} NETStandard.Library 2.1 NETStandard.Library.Ref
 
 
-%package -n dotnet-sdk-7.0-source-built-artifacts
+%package -n dotnet-sdk-%{dotnetver}-source-built-artifacts
 
 Version:        %{sdk_rpm_version}
-Summary:        Internal package for building .NET 7.0 Software Development Kit
+Summary:        Internal package for building .NET %{dotnetver} Software Development Kit
 
-%description -n dotnet-sdk-7.0-source-built-artifacts
+%description -n dotnet-sdk-%{dotnetver}-source-built-artifacts
 The .NET source-built archive is a collection of packages needed
 to build the .NET SDK itself.
 
@@ -610,33 +612,33 @@ export COMPlus_LTTng=0
 %{_bindir}/dotnet
 %license %{_libdir}/dotnet/LICENSE.txt
 %license %{_libdir}/dotnet/ThirdPartyNotices.txt
-%doc %{_mandir}/man1/dotnet*.1.gz
-%doc %{_mandir}/man7/dotnet*.7.gz
+%doc %{_mandir}/man1/dotnet*.1.*
+%doc %{_mandir}/man7/dotnet*.7.*
 %config(noreplace) %{_sysconfdir}/profile.d/dotnet.sh
 %config(noreplace) %{_sysconfdir}/dotnet
 %dir %{_datadir}/bash-completion
 %dir %{_datadir}/bash-completion/completions
 %{_datadir}/bash-completion/completions/dotnet
 
-%files -n dotnet-hostfxr-7.0
+%files -n dotnet-hostfxr-%{dotnetver}
 %dir %{_libdir}/dotnet/host/fxr
 %{_libdir}/dotnet/host/fxr/%{host_version}
 
-%files -n dotnet-runtime-7.0
+%files -n dotnet-runtime-%{dotnetver}
 %dir %{_libdir}/dotnet/shared
 %dir %{_libdir}/dotnet/shared/Microsoft.NETCore.App
 %{_libdir}/dotnet/shared/Microsoft.NETCore.App/%{runtime_version}
 
-%files -n aspnetcore-runtime-7.0
+%files -n aspnetcore-runtime-%{dotnetver}
 %dir %{_libdir}/dotnet/shared
 %dir %{_libdir}/dotnet/shared/Microsoft.AspNetCore.App
 %{_libdir}/dotnet/shared/Microsoft.AspNetCore.App/%{aspnetcore_runtime_version}
 
-%files -n dotnet-templates-7.0
+%files -n dotnet-templates-%{dotnetver}
 %dir %{_libdir}/dotnet/templates
 %{_libdir}/dotnet/templates/%{templates_version}
 
-%files -n dotnet-sdk-7.0
+%files -n dotnet-sdk-%{dotnetver}
 %dir %{_libdir}/dotnet/sdk
 %{_libdir}/dotnet/sdk/%{sdk_version}
 %dir %{_libdir}/dotnet/sdk-manifests
@@ -645,7 +647,7 @@ export COMPlus_LTTng=0
 %{_libdir}/dotnet/metadata
 %dir %{_libdir}/dotnet/packs
 
-%files -n dotnet-sdk-7.0-source-built-artifacts
+%files -n dotnet-sdk-%{dotnetver}-source-built-artifacts
 %dir %{_libdir}/dotnet
 %{_libdir}/dotnet/source-built-artifacts
 
