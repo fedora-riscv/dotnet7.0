@@ -173,7 +173,13 @@ applications and micro-services.
 framework libraries, an SDK containing compilers and a 'dotnet'
 application to drive everything.
 
-%if 0%{?rhel} <= 8
+# The `dotnet` package was a bit of historical mistake. Users
+# shouldn't be asked to install .NET without a version because .NET
+# code (source or build) is generally version specific. We have kept
+# it around in RHEL 8, and it's also present in the older dotnet6.0
+# package in Fedora. But no reason to continue this mistake for newer
+# versions of .NET or Fedora.
+%if 0%{?fedora} < 1 && 0%{?rhel} <= 8
 
 %package -n dotnet
 
@@ -491,12 +497,11 @@ export EXTRA_LDFLAGS="$LDFLAGS"
 # suggested compile-time change doesn't work, unfortunately.
 export COMPlus_LTTng=0
 
-%if 0%{?rhel} >= 9
-# OpenSSL 3.0 in RHEL 9 has disabled SHA1, used by .NET for strong
-# name signing. See https://github.com/dotnet/runtime/issues/67304
+# OpenSSL 3.0 in RHEL 9 and newer versions of Fedora has disabled
+# SHA1, used by .NET for strong name signing. See
+# https://github.com/dotnet/runtime/issues/67304
 # https://gitlab.com/redhat/centos-stream/rpms/openssl/-/commit/78fb78d30755ae18fdaef28ef392f4e67c662ff6
 export OPENSSL_ENABLE_SHA1_SIGNATURES=1
-%endif
 
 VERBOSE=1 ./build.sh \
 %if %{without bootstrap}
@@ -599,7 +604,7 @@ export COMPlus_LTTng=0
 %{buildroot}%{_libdir}/dotnet/dotnet --version
 
 
-%if 0%{?rhel} <= 8
+%if 0%{?fedora} < 1 && 0%{?rhel} <= 8
 %files -n dotnet
 # empty package useful for dependencies
 %endif
