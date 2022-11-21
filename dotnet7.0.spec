@@ -176,10 +176,9 @@ application to drive everything.
 # The `dotnet` package was a bit of historical mistake. Users
 # shouldn't be asked to install .NET without a version because .NET
 # code (source or build) is generally version specific. We have kept
-# it around in RHEL 8, and it's also present in the older dotnet6.0
-# package in Fedora. But no reason to continue this mistake for newer
-# versions of .NET or Fedora.
-%if 0%{?fedora} < 1 && 0%{?rhel} <= 8
+# it around in older versions of RHEL and Fedora. But no reason to
+# continue this mistake.
+%if ( 0%{?fedora} && 0%{?fedora} < 38 ) || ( 0%{?rhel} && 0%{?rhel} < 8 )
 
 %package -n dotnet
 
@@ -604,7 +603,7 @@ export COMPlus_LTTng=0
 %{buildroot}%{_libdir}/dotnet/dotnet --version
 
 
-%if 0%{?fedora} < 1 && 0%{?rhel} <= 8
+%if ( 0%{?fedora} && 0%{?fedora} < 38 ) || ( 0%{?rhel} && 0%{?rhel} < 9 )
 %files -n dotnet
 # empty package useful for dependencies
 %endif
