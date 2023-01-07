@@ -178,6 +178,9 @@ rm -r src/nuget-client/test/EndToEnd
 # https://github.com/microsoft/ApplicationInsights-dotnet/issues/2670
 rm -r src/source-build-externals/src/application-insights/LOGGING/test/Shared/CustomTelemetryChannel.cs
 
+# CC-BY-SA https://gitlab.com/fedora/legal/fedora-license-data/-/issues/104#note_1230640823
+rm -r src/runtime/src/tests/sizeondisk/sodbench
+
 popd
 
 if [[ ${build_bootstrap} == true ]]; then
