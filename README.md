@@ -1,7 +1,6 @@
 # dotnet7.0
 
-This is the work-in-progress .NET 7.0 package for Fedora. When it's ready, it
-will be merged into Fedora proper.
+This is the .NET 7.0 package for Fedora.
 
 This package is maintained by the Fedora DotNet SIG (Special Interest
 Group). You can find out more about the DotNet SIG at:
