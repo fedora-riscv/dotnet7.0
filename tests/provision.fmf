@@ -1,0 +1,6 @@
+---
+
+standard-inventory-qcow2:
+  qemu:
+    m: 5G
+

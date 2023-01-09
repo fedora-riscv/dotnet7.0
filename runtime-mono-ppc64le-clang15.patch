@@ -1,0 +1,39 @@
+diff --git a/src/runtime/src/mono/mono/mini/mini-ppc.c b/src/runtime/src/mono/mono/mini/mini-ppc.c
+index bc97b497af9..cc5e5ccc0e6 100644
+--- a/src/runtime/src/mono/mono/mini/mini-ppc.c
++++ b/src/runtime/src/mono/mono/mini/mini-ppc.c
+@@ -2733,7 +2733,7 @@ handle_thunk (MonoCompile *cfg, guchar *code, const guchar *target)
+ 			cfg->arch.thunks = cfg->thunks;
+ 			cfg->arch.thunks_size = cfg->thunk_area;
+ #ifdef THUNK_ADDR_ALIGNMENT
+-			cfg->arch.thunks = ALIGN_TO(cfg->arch.thunks, THUNK_ADDR_ALIGNMENT);
++			cfg->arch.thunks = (guint8 *)ALIGN_TO(cfg->arch.thunks, THUNK_ADDR_ALIGNMENT);
+ #endif
+ 		}
+ 		thunks = cfg->arch.thunks;
+@@ -5886,7 +5886,7 @@ host_mgreg_t*
+ mono_arch_context_get_int_reg_address (MonoContext *ctx, int reg)
+ {
+ 	if (reg == ppc_r1)
+-		return (host_mgreg_t)(gsize)MONO_CONTEXT_GET_SP (ctx);
++		return (host_mgreg_t *)(gsize)&ctx->sc_sp;
+ 
+ 	return &ctx->regs [reg];
+ }
+diff --git a/src/runtime/src/mono/mono/mini/tramp-ppc.c b/src/runtime/src/mono/mono/mini/tramp-ppc.c
+index 59bcb275a48..e0bc7f8eca4 100644
+--- a/src/runtime/src/mono/mono/mini/tramp-ppc.c
++++ b/src/runtime/src/mono/mono/mini/tramp-ppc.c
+@@ -672,10 +672,10 @@ mono_arch_get_call_target (guint8 *code)
+ 	}
+ #if defined(TARGET_POWERPC64) && !defined(PPC_USES_FUNCTION_DESCRIPTOR)
+ 	else if (((guint32*)(code - 32)) [0] >> 26 == 15) {
+-		guint8 *thunk = GET_MEMORY_SLOT_THUNK_ADDRESS((guint32*)(code - 32));
++		guint8 *thunk = (guint8 *)GET_MEMORY_SLOT_THUNK_ADDRESS((guint32*)(code - 32));
+ 		return thunk;
+ 	} else if (((guint32*)(code - 4)) [0] >> 26 == 15) {
+-		guint8 *thunk = GET_MEMORY_SLOT_THUNK_ADDRESS((guint32*)(code - 4));
++		guint8 *thunk = (guint8 *)GET_MEMORY_SLOT_THUNK_ADDRESS((guint32*)(code - 4));
+ 		return thunk;
+ 	}
+ #endif
