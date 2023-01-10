@@ -1,8 +1,5 @@
 ---
 inspections:
-    # We ship an empty dotnet package that installs the latest SDK, but
-    # also a newer SDK when we have that
-    emptyrpm: off
     # We patch upstream a lot, no need to reject patches
     patches: off
 badfuncs:

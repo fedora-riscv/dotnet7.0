@@ -2,6 +2,12 @@
 
 # Usage:
 #     ./rename-tarball original-name.tar.gz new-name.tar.gz
+#
+# The generated new-name.tar.gz will always have a single main
+# directory (named new-name to match the tarball name) in the archive.
+# If the original tarball had multiple files in the main directory of
+# the archive, all those files will be moved to under the new main
+# directory.
 
 set -euo pipefail
 IFS=$'\n\t'
@@ -41,11 +47,21 @@ new_name=${new_name/.tar.gz}
 echo "Original: ${original_name}.tar.gz"
 echo "New name: ${new_name}.tar.gz"
 
+rm -rf "temp-${new_name}"
 mkdir "temp-${new_name}"
-pushd "temp-${new_name}"
+pushd "temp-${new_name}" > /dev/null
 tar xf "${original_path}"
-mv -- * "${new_name}"
-tar czf ../"${new_name}.tar.gz" "${new_name}"
+# `find` always shows the current directory as one of the entries in
+# the output. A total of 2 entries means there is only one main
+# directory in the extracted archive, and we can just move it to the
+# expected location.
+if [[ $(find . -maxdepth 1 | wc -l) == 2 ]]; then
+    mv -- ./* ../"${new_name}"
+else
+    mkdir -p ../"${new_name}"
+    mv -- ./* ../"${new_name}"
+fi
+popd > /dev/null
+tar czf "${new_name}.tar.gz" "${new_name}"
 rm -rf "${new_name}"
-popd
 rmdir "temp-${new_name}"

@@ -102,9 +102,9 @@ index c197d8afd..55c1c1d22 100644
 --- a/src/runtime/eng/SourceBuild.props
 +++ b/src/runtime/eng/SourceBuild.props
 @@ -41,6 +41,7 @@
-       <InnerBuildArgs>$(InnerBuildArgs) /p:BuildDebPackage=false</InnerBuildArgs>
        <InnerBuildArgs>$(InnerBuildArgs) /p:EnableNgenOptimization=false</InnerBuildArgs>
        <InnerBuildArgs>$(InnerBuildArgs) /p:EnablePackageValidation=false</InnerBuildArgs>
+       <InnerBuildArgs>$(InnerBuildArgs) /p:DisableSourceLink=false</InnerBuildArgs>
 +      <InnerBuildArgs Condition="'$(SourceBuildUseMonoRuntime)' == 'true'">$(InnerBuildArgs) /p:PrimaryRuntimeFlavor=Mono /p:RuntimeFlavor=Mono</InnerBuildArgs>
      </PropertyGroup>
    </Target>
@@ -138,8 +138,8 @@ index a347c736df5..426cb6aa96d 100644
 --- a/src/sdk/src/Tasks/Common/Resources/Strings.resx
 +++ b/src/sdk/src/Tasks/Common/Resources/Strings.resx
 @@ -875,4 +875,8 @@ You may need to build the project on another operating system or architecture, o
-     <value>NETSDK1191: A runtime identifier for the property '{0}' couldn't be inferred. Specify a rid explicitly.</value>
-       <comment>{StrBegin="NETSDK1191: "}</comment>
+     <value>NETSDK1192: Targeting .NET 7.0 or higher in Visual Studio 2022 17.3 is not supported.</value>
+     <comment>{StrBegin="NETSDK1192: "}</comment>
    </data>
 +  <data name="AotNotSupported" xml:space="preserve">
 +    <value>NETSDK1193: The SDK does not support Ahead of time compilation. Set the PublishAot property to false.</value>
