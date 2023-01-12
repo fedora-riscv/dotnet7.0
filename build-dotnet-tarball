@@ -141,7 +141,10 @@ fi
 
 rm -rf "${tarball_name}"
 
-tar xf "${unmodified_tarball_name}.tar.gz"
+mkdir -p "${unmodified_tarball_name}"
+pushd "${unmodified_tarball_name}"
+tar xf ../"${unmodified_tarball_name}.tar.gz"
+popd
 mv "${unmodified_tarball_name}" "${tarball_name}"
 
 pushd "${tarball_name}"
