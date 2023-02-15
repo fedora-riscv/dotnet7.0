@@ -132,7 +132,7 @@ if [ ! -f "${unmodified_tarball_name}.tar.gz" ]; then
 
     popd
 
-    cp -a \
+    mv \
         "${temp_dir}"/installer/artifacts/packages/Debug/Shipping/dotnet-sdk-source-7*.tar.gz \
         "${unmodified_tarball_name}.tar.gz"
 
