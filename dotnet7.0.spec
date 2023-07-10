@@ -46,6 +46,9 @@
 %ifarch x86_64
 %global runtime_arch x64
 %endif
+%ifarch riscv64
+%global runtime_arch riscv64
+%endif
 
 %global mono_archs s390x ppc64le
 
@@ -83,7 +86,7 @@ Patch1:        roslyn-analyzers-ppc64le-apphost.patch
 
 
 %if 0%{?fedora} || 0%{?rhel} >= 8
-ExclusiveArch:  aarch64 ppc64le s390x x86_64
+ExclusiveArch:  aarch64 ppc64le s390x x86_64 riscv64
 %else
 ExclusiveArch:  x86_64
 %endif
